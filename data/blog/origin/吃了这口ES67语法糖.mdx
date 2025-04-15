@@ -1,0 +1,159 @@
+---
+title: 吃了这口ES6/7语法糖
+date: '2018-03-07T16:28:53.000Z'
+tags:
+  - js
+  - es6/7
+  - notes
+draft: false
+summary: E
+---
+ES6/7的新语法还是挺多的，实际工作中几乎都用新的语法糖。
+
+
+# Async/Await
+
+## Async
+
+Async function 异步函数，返回一个promis对象；
+声明异步函数：
+
+```javascript
+async function foo() {}
+const foo = async function () {};
+const foo = async () => {};
+```
+
+## await
+
+await（只允许在 async(异步) 函数内部使用，等待其操作的对象 Promise 返回;
+
+- 如果 Promise 是完成状态，才会继续往下执行。
+- 如果 Promise 是拒绝状态，await 会抛出拒绝值，不再往下执行。
+
+使用async function的原因就是为了在其中使用await,而await之后跟的是表达式，可以是函数（异步函数或者其他普通函数）或者其他表达式。
+
+```javascript
+async function testAsync() {
+  return "hello async";
+}
+async function test() {
+    const result = await testAsync();
+    console.log(result);
+}
+test();
+```
+
+await 后接get、post等异步请求，实现请求之后的执行then()的效果：
+
+```javascript
+const param = {};
+async function getList() {
+    const res = await this.axios.post(Api.ACTOR_LIST, param);
+    if (res.success) {
+    // 对请求结果进行处理
+    }
+}
+```
+
+**多个异步函数时，可使用Promise.all();**
+
+```javascript
+async function a() {
+    console.log(0);
+}
+async function b() {
+    console.log(1);
+}
+async function c() {
+    console.log(2);
+}
+async funciton do() {
+    await Promise.all([a(), b(), c()]);
+}
+do(); // 0 1 2
+```
+
+# ...展开运算符
+
+解构赋值、类数组对象变成数组等功能.
+
+## 用于函数调用,传参
+
+以前将数组数据用于函数参数时：
+
+```javascript
+const test = (a, b, c) => {};
+const args = [0, 1, 2];
+test.apply(null, args);
+```
+
+有了展开运算符：
+
+```javascript
+const test = (a,b,c) => {}
+const args = [0,1,2];
+test(...args);
+```
+
+## 用于数组字面量
+
+```javascript
+const arr1 = ['a', 'b', 'c'];
+const arr2 = [...arr1, 'd', 'e']; // ['a','b','c','d','e']
+const arr3 = ['p', 'o'];
+arr1.push(...arr3); // ['a', 'b', 'c', 'p', 'o']
+```
+
+## 用于解构赋值
+
+数组赋值
+
+```javascript
+const [arg1, arg2, ...arg3] = [1, 2, 3, 4];
+arg1 //1
+arg2 //2
+arg3 //['3','4']
+
+const {2: a, 3: b} = ["hi", "he", "gg", "aa"];
+a // 数组下标为2的，即"gg"
+b // "aa"
+```
+
+对象赋值
+
+```javascript
+const {x, y, ...z} = {x:1, y:2, a:3, b:4};
+x; //1
+y; //2
+z; //{a:3,b:4}
+```
+
+注：此时展开运算符必须放在数组或对象最后。
+合并对象
+
+```javascript
+let a = {x:1, y:2};
+let b = {z:3};
+let ab = {...a, ...b};
+ab // {x:1,y:2,z:3}
+```
+
+## 类数组对象变成数组
+
+```javascript
+const list=document.getElementsByTagName('div');
+const arr=[..list];
+```
+
+# 函数参数默认值
+
+函数参数有默认值的情况下，先取赋值，无则取默认值；
+
+```javascript
+const foo = (height = 50, color = 'red') => {
+  console.log(height, color);
+}
+foo(); // 50, "red"
+foo(100, "yellow"); // 100, "yellow"
+```

@@ -1,0 +1,121 @@
+---
+title: str.split与arr.splice()和arr.slice()详解
+date: '2017-08-30T16:17:40.000Z'
+tags:
+  - js
+  - 易乱
+  - javascript
+draft: false
+summary: ''
+---
+
+str.split()和arr.slice()差不多，都是根据参数分割原字符串/数组，**并产生一个新的array**。而splice()真是相见恨晚啊，很强大了
+
+
+## str.split()
+
+split英文原意为分开，分裂（以一个标准将字符串分开）；
+
+把一个字符串分割成**字符串数组**,
+
+ 语法：
+
+```javascript
+stringObject.split(separator,howmany)
+
+```
+
+```javascript
+separator   必需。**字符串或正则表达式**，从该参数指定的地方分割 stringObject。
+
+howmany 可选。该参数可指定返回的数组的最大长度。如果设置了该参数，返回的子串不会多于这个参数指定的数组。如果没有设置该参数，整个字符串都会被分割，不考虑它的长度。
+```
+
+```javascript
+var str="How are you doing today?"
+str.split(" ")//['How','are','you','doing','today?']
+str.split("")//['H','o','w',' ','a'...'?']
+str.split(" ",3)//['How','are','you']
+str.split("a")//["How ", "re you doing tod", "y ?"]
+```
+
+---
+
+**与str.split()相反的是arr.join(separator);**
+
+```javascript
+var str="How are you doing today?"
+str.split(" ").join(" ")//"How are you doing today?"
+
+```
+
+---
+
+## arr.slice()
+
+slice英文原意为划分，切下；（当成选择复制更好理解）
+
+slice() 方法可从已有的数组中**返回选定范围的元素**，是一个**新数组**！
+
+语法：
+
+```javascript
+arrayObject.slice(start,end)
+//start可以是负数，end可以不加，则为直到末尾；
+```
+
+```javascript
+var arr = ["0How", "1are", "2you", "3doing", "4today"];
+arr.slice(1,3);//["1are", "2you"]
+arr.slice(1);// ["1are", "2you", "3doing", "4today"]
+```
+
+这里面有个坑，写这篇博客用console调试时才发现：
+
+---
+
+**slice(1,3)选取的是1和2，并不包含end所指的那个元素！**
+
+---
+
+## arr.splice()
+
+splice英文原意为粘结处（从粘结处开始添加或者删除
+
+重点来了！
+
+splice() 方法是**向/从**数组中**添加/删除**项目，**然后返回被添加/删除的项目**。说白了，**就是可以往数组添加和删除元素。**
+
+注释：该方法**会改变原始数组**。
+
+语法：
+
+```javascript
+arrayObject.splice(index,howmany,item1,.....,itemX)
+```
+
+```javascript
+index   必需。整数，规定添加/删除项目的位置，可使用负数；
+howmany 必需。要删除的项目数量。**如果设置为 0，则不会删除项目。
+item1, ..., itemX   可选。**向数组添加的新项目。**
+```
+
+示例：
+
+```javascript
+var arr = [0,1,2,3,4,5,6,7]
+//往数组4的位置插入一个“test”:
+arr.splice(3,0,"test");//[]
+console.log(arr);//[0,1,2,3,"test",4,5,6,7]
+//删除数组中3-5，替换为"h","a","h","a":
+arr.splice(3,5,"h","a","h","a");//[3,4,5]
+console.log(arr);//[0, 1, 2, "h", "a", "h", "a", 6, 7]
+```
+
+这里面又有个坑….写这篇博客用console调试时才发现….：
+
+---
+
+**arr.splice(3,5,”h”,”a”,”h”,”a”)返回的是被删除的元素组成的数组！！！不是arr,之前以为直接返回arr**
+
+---

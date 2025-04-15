@@ -1,0 +1,136 @@
+---
+title: js基础之call、apply、bind原理与实现
+date: '2019-07-07T16:16:23.000Z'
+tags:
+  - js
+  - javascript
+draft: false
+summary: ''
+---
+
+## 三者区别
+
+- apply、call、bind 三者都是函数的一个方法，第一个参数都是 this 要指向的对象，也就是想指定的上下文；
+
+- apply、call、bind 三者都可以利用后续参数传参，其中只有**apply()后续参数以数组**形式传；
+
+- bind 是返回对应的绑定函数，便于稍后调用；apply、call 则是立即调用。
+
+
+
+```js
+const parent = {
+    age: 30,
+    // 注意在用apply等时，这里不能用箭头函数，箭头定义时this已经指定，无法被apply等改变
+    run: function(name) { console.log(this.age, name) }
+};
+const child = {
+    age: 1
+};
+
+parent.run.apply(child, ["tom"]); // 1 tom // 立即执行
+parent.run.call(child, "tom"); // 1 tom // 立即执行
+parent.run.apply(null); // undefined undefined // null 是window下的，表示this指向window
+parent.run.apply(undefined); // undefined undefined // undefined 指向window
+
+const fn = parent.run.bind(child, "tom"); // bind会返回一个函数
+fn(); // 1 tom
+```
+
+## 原理 & 实现
+
+### call & apply
+
+可以看看这个[JavaScript深入之call和apply的模拟实现](https://segmentfault.com/a/1190000009257663)
+
+fn.apply(obj, array)实现的原理：
+
+- 将要执行的函数fn设置为该对象obj的属性
+- 执行obj.fn(args)函数
+- 不能给这个obj对象新增新的属性，所以要删除这个属性；
+- 其中对obj要做判断，为**null或undefined**时，要把this指向window
+
+```js
+Function.prototype.call = function (context) {
+
+    // 首先判断是不是函数调用该方法，如果不是，则抛出异常
+    if (typeof this !== "function") throw new TypeError('Error');
+
+    // 为**null或undefined**时，要把this指向window
+    var context = context || window;
+
+    // 将函数设置为obj的属性
+    context.fn = this;
+
+    // 类数组解构参数
+    var args = [...arguments].slice(1);
+
+    // 执行函数
+    var result = context.fn(...args);
+
+    // 删除函数
+    delete context.fn;
+
+    // 返回执行结果
+    return result;
+}
+
+// apply与call不同只在于参数处理不用
+Function.prototype.apply = function (context, args) {
+
+    // 首先判断是不是函数调用该方法，如果不是，则抛出异常
+    if (typeof this !== "function") throw new TypeError('Error');
+
+    // 为**null或undefined**时，要把this指向window
+    var context = context || window;
+
+    // 将函数设置为obj的属性
+    context.fn = this;
+
+    // 执行函数
+    var result;
+    if (args) {
+        result = context.fn(...args);
+    } else {
+        result = context.fn();
+    }
+
+    // 删除函数
+    delete context.fn;
+
+    // 返回执行结果
+    return result;
+}
+```
+
+### bind
+
+bind其实是在call、apply基础上封装了一层，因此多次调用bind，只会第一次生效；
+
+```js
+parent.run.bind(child, "tom").bind(child1, "jack").bind(child2, "Rachael")();
+// 1 tom 
+// 并不会继续下去
+```
+
+**简单的实现：**（实际要复杂一些）
+
+```js
+Function.prototype.myBind = function (context) {
+
+    // 首先判断是不是函数调用该方法，如果不是，则抛出异常
+    if (typeof this !== "function") throw new TypeError('Error');
+
+    var me = this;
+
+    // 去掉第一个函数参数
+    var args = [...arguments].slice(1);
+    // var args = Array.prototype.slice(arguments, 1);
+
+    return function () {
+        // 把后面的执行函数的参数拼接到bing参数后
+        return me.apply(context, args.concat(...arguments);
+        // return me.apply(context, args.concat(Array.prototype.slice(arguments));
+    }
+}
+```

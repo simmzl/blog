@@ -1,0 +1,180 @@
+---
+title: Promise对象-异步编程解决方案
+date: '2017-11-12T16:33:19.000Z'
+tags:
+  - 面试
+  - javascript
+draft: false
+summary: ''
+---
+
+- 不使用promise
+- 使用promise
+  - 三种状态
+  - 声明一个Promise对象
+  - Promise.then()
+  - Promise中的数据传递
+  - Promise.all()
+  - Promise.race()
+
+
+
+## 不使用promise
+
+当我们使用AJAX请求一个数据时：
+
+```JavaScript
+var url = 'https://xxx.com/xx.json';
+var result;
+
+var XHR = new XMLHttpRequest();
+XHR.open('GET', url, true);
+XHR.send();
+
+XHR.onreadystatechange = () => {
+    if (XHR.readyState == 4 && XHR.status == 200) {
+        result = XHR.response;
+        console.log(result);
+    }
+}
+```
+
+当需要做另外一个ajax请求，这个新的ajax请求的其中一个参数，得从**上一个ajax请求**中获取，这个时候我们就不得不如下这样做：
+
+```JavaScript
+var url = 'https://xxx.com/xx.json';
+var result;
+
+var XHR = new XMLHttpRequest();
+XHR.open('GET', url, true);
+XHR.send();
+
+XHR.onreadystatechange = () => {
+    if (XHR.readyState == 4 && XHR.status == 200) {
+        result = XHR.response;
+        console.log(result);
+
+        // 新的ajax请求
+        var url2 = 'https://xxx.com/xx.json';
+        var XHR2 = new XMLHttpRequest();
+        XHR2.open('GET', url, true);
+        XHR2.send();
+        XHR2.onreadystatechange = () => {
+            ...
+        }
+    }
+}
+```
+
+如果有多个ajax请求都需要其上一个请求中的数据时，即使使用**回调函数**也会使代码可读性和可维护性降低，层层嵌套从而产生所谓的回调地狱。
+
+## 使用promise
+
+### 状态
+
+promise有三种状态，分别是
+
+- pending -进行中
+
+- resolved -已完成
+
+- rejected -已失败
+
+当Promise的状态又pending转变为resolved或rejected时，会执行相应的方法，并且状态一旦改变，就无法再次改变状态，这也是它名字promise-承诺的由来.
+
+### 声明一个Promise对象
+
+在Promise对象的构造函数中，将一个函数作为第一个参数。这个函数就是用来处理Promise的状态变化。
+
+```JavaScript
+// 方法1
+let promise = new Promise ( (resolve, reject) => {
+  if (success) {
+    resolve(value);
+  } else {
+    reject(error);
+  }
+})
+
+// 方法2
+function promise () {
+  return new Promise ((resolve, reject) => {
+    if (success) {
+      resolve(value);
+    } else {
+      reject(error);
+    }
+  })
+}
+```
+
+### Promise.then()
+
+.then()方法使Promise原型链上的方法，它包含两个参数，分别是已成功**resolved的回调**和已失败**rejected的回调**
+
+```JavaScript
+promise.then(
+    () => { console.log('this is success callback') },
+    () => { console.log('this is fail callback') }
+)
+```
+
+### Promise中的数据传递
+
+```JavaScript
+let fn = num => {
+  return new Promise((resolve, reject) => {
+    if (typeof num === 'number') {
+      resolve(num);
+    } else {
+      reject(TypeError);
+    }
+  });
+};
+
+fn(2).then(num => {
+  console.log('first: ' + num);
+  return num + 1;
+})
+  .then(num => {
+    console.log('second: ' + num);
+    return num + 1;
+  })
+  .then(num => {
+    console.log('third: ' + num);
+  });
+
+// 输出结果
+// first: 2
+// second: 3
+// third: 4
+
+```
+
+### Promise.all()
+
+当有一个ajax请求，它的参数需要另外2个甚至更多请求都有返回结果之后才能确定时，需要用到all()；
+Promise.all接收一个**Promise对象组成的数组**作为参数，当这个数组所有的Promise对象状态都变成resolved的时候，它才会去调用成功回调方法。否则执行失败方法；
+
+```JavaScript
+let p1 = new Promise(...);
+let p2 = new Promise(...);
+let p3 = new Promise(...);
+
+let promise = Promise.all( [p1, p2, p3] );
+promise.then(
+    ...
+).catch(
+    ...
+)
+```
+
+### Promise.race()
+
+与Promise.all相似的是，Promise.race都是以一个**Promise对象组成的数组**作为参数，不同的是，只要当数组中的**其中一个Promsie状态**变成resolved或者rejected时，就可以调用.then方法了；
+
+参考：
+[MDN web docs](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+[看这一篇就够了！浅谈ES6的Promise对象](http://www.jianshu.com/p/c98eb98bd00c)
+[Javascript 中的神器——Promise](http://www.jianshu.com/p/063f7e490e9a)
+[前端基础进阶（十三）：透彻掌握Promise的使用，读这篇就够了](http://www.jianshu.com/p/fe5f173276bd)

@@ -1,0 +1,230 @@
+---
+title: nodejs-begining
+date: '2018-03-28T19:00:00.000Z'
+tags:
+  - node
+  - node.js
+draft: false
+summary: ''
+---
+
+使用node做中间层，服务端渲染的需求，开始学习node.js
+
+
+# node的全局环境
+
+global,process,与浏览器window，document类似。
+
+# common.js规范
+
+暴露对象可以使用：
+
+```javascript
+exports.name = name;
+```
+
+or
+
+```javascript
+module.exports = name;
+```
+
+# node 模块
+
+分为很多模块，使用模块都需要单独引入：
+
+```javascript
+const name = require("moduleName");
+```
+
+## url API
+
+用于网络请求参数处理等需求。
+
+### url.parse(urlString[, parseQueryString[, slashesDenoteHost]])
+
+- 将`urlString`解析为`urlObj`。
+- `parseQueryString`默认`false`，将query解析为字符串：`query=string`
+- `parseQueryString`为`true`时，将query解析为对象：`query: { query: 'string' }`;
+
+```javascript
+url.parse("https://user:pass@sub.host.com:8080/p/a/t/h?query=string#hash", true);
+// =>
+Url {
+  protocol: 'https:',
+  slashes: true,
+  auth: 'user:pass',
+  host: 'sub.host.com:8080',
+  port: '8080',
+  hostname: 'sub.host.com',
+  hash: '#hash',
+  search: '?query=string',
+  query: { query: 'string' },
+  pathname: '/p/a/t/h',
+  path: '/p/a/t/h?query=string',
+  href: 'https://user:pass@sub.host.com:8080/p/a/t/h?query=string#hash' }
+```
+
+- `slashesDenoteHost`（斜杠表示HOST），默认为`false`,如果为`urlString`不带协议头，如`//simmzl.cn/movie?query=simmzl#hash`,则解析不出`host`为`simmzl.cn`,为`true`则可以。
+
+```javascript
+url.parse("//simmzl.cn/music/?query=simmzl#hash",true,false);
+// =>
+Url {
+  protocol: null,
+  slashes: null,
+  auth: null,
+  host: null,
+  port: null,
+  hostname: null,
+  hash: '#hash',
+  search: '?query=simmzl',
+  query: { query: 'simmzl' },
+  // 将主机当作了路径名
+  pathname: '//simmzl.cn/music/',
+  path: '//simmzl.cn/music/?query=simmzl',
+  href: '//simmzl.cn/music/?query=simmzl#hash' }
+```
+
+### url.format(urlObj)
+
+将`url对象`格式化为`url字符串`,与`parse()`相反；
+
+```javascript
+url.format({
+    protocol: 'https:',
+  slashes: true,
+  auth: 'user:pass',
+  host: 'sub.host.com:8080',
+  port: '8080',
+  hostname: 'sub.host.com',
+  hash: '#hash',
+  search: '?query=string',
+  query: { query: 'string' },
+  pathname: '/p/a/t/h',
+  path: '/p/a/t/h?query=string',
+  href: 'https://user:pass@sub.host.com:8080/p/a/t/h?query=string#hash'
+});
+// =>
+"https://user:pass@sub.host.com:8080/p/a/t/h?query=string#hash"
+```
+
+### url.reslove(from to)
+
+```javascript
+const url = require('url');
+url.resolve('/one/two/three', 'four');         // '/one/two/four'
+url.resolve('http://example.com/', '/one');    // 'http://example.com/one'
+url.resolve('http://example.com/one/three', '/two'); // 'http://example.com/two'
+```
+
+## querystring API
+
+> [文档](http://nodejs.cn/api/querystring.html)
+
+用于解析与格式化 URL 查询字符串
+
+### querystring.stringify(obj[, sep[, eq[, options]]])
+
+将对象序列化为字符串
+
+```javascript
+// 默认
+querystring.stringify({ name: 'simmzl', foo: "foo", bar: "bar" });
+// 'name=simmzl&foo=foo&bar=bar'
+
+querystring.stringify({ name: 'simmzl', foo: "foo", bar: "bar" }, ",");
+// 'name=simmzl,foo=foo,bar=bar'
+
+querystring.stringify({ name: 'simmzl', foo: "foo", bar: "bar" }, ",", ":");
+// 'name:simmzl,foo:foo,bar:bar'
+```
+
+### querystring.parse(str[, sep[, eq[, options]]])
+
+将字符串反序列化为对象
+
+```javascript
+querystring.parse("name=simmzl&foo=foo&bar=bar&arr=tom&arr=jerry")
+// { name: 'simmzl',
+//   foo: 'foo',
+//   bar: 'bar',
+//   arr: [ 'tom', 'jerry' ] }
+
+querystring.parse('name:simmzl,foo:foo,bar:bar', ',', ':')
+// { name: 'simmzl', foo: 'foo', bar: 'bar' }
+```
+
+### querystring.escape(str) && ### querystring.unescape(str)
+
+转义字符与反转义  
+
+```javascript
+querystring.escape('<哈哈>');
+// '%3C%E5%93%88%E5%93%88%3E'
+
+querystring.unescape('%3C%E5%93%88%E5%93%88%3E');
+// '<哈哈>'
+```
+
+## events
+
+像JavaScript一样事件的驱动
+
+```javascript
+// 引入events模块
+const EventEmitter = require('events');
+
+// 继承
+class MyEmitter extends EventEmitter {};
+
+const myEmitter = new MyEmitter();
+// eventEmitter.on(eventName，listener)注册监听器，同eventEmitter.addEventLister()，皆可。
+// 如果事件有监听器，则返回 true ，否则返回 false。
+myEmitter.on('myEvent', param => {
+  console.log(`触发了第一个事件！${param}`);
+// this指向{}
+  console.log(this);
+});
+
+// 使用 setImmediate() 或 process.nextTick() 方法切换到异步操作模式
+myEmitter.on('myEvent', param => {
+  setImmediate(() => {
+    console.log('这个是异步发生的');
+  })
+});
+
+myEmitter.on('myEvent', function(param) {
+  console.log(`触发了第二个事件！${param}`);
+  // this指向myEmitter
+  console.log(this);
+});
+// eventEmitter.emit(eventName[, ...args]) 方法用于触发事件
+myEmitter.emit('myEvent', 'test');
+```
+
+## readline
+
+逐行读取数据
+
+### readline.createInterface(options)
+
+创建一个`interface`类
+
+```javascript
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+```
+
+### line事件
+
+每当`input`流接收到接收行结束符（\n、\r 或 \r\n）时触发 `line` 事件,监听器函数被调用时会带上一个包含接收的那一行输入的字符串作为参数。
+
+```javascript
+// 每回车一次执行一次
+rl.on('line', line => {
+  console.log(`接收到了${line}`);
+});
+```

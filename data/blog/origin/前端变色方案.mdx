@@ -1,0 +1,371 @@
+---
+title: 前端变色方案
+date: '2020-05-14T18:07:22.000Z'
+tags:
+  - css
+draft: false
+summary: ''
+---
+
+随着IOS深色模式的普及，众多App支持了白天/深色主题。当然Web页面也可以做到。
+
+![dark_mode](https://static.simmzl.cn/blog/v2/imgs/dark_mode.png)
+
+
+
+## 方案
+
+变色的核心，是色值和背景图的改变，以下是一些实现方案：
+
+### CSS滤镜 filter: brightness()
+
+[brightness() - CSS（层叠样式表） | MDN](https://developer.mozilla.org/zh-CN/docs/Web/CSS/filter-function/brightness)
+
+懒人做法，可以通过改变`<html>`标签即整个页面的输出亮度实现夜晚变暗的效果，值为0-1，0表示全黑。效果上其实就是加了个黑色带透明度的蒙层。
+
+简单粗暴、效果单一，兼容性尚可。但是有个坑，即元素`background`不能为`none`或透明，否则`brightness()`无效果。
+
+![brightness](https://static.simmzl.cn/blog/v2/imgs/brightness.png)
+
+效果：
+
+<div class="iframe-container">
+  <iframe class="no-click" src="https://www.apple.com.cn/apple-music/" scrolling="no" height="595px" width="335px"></iframe>
+  <iframe class="no-click" src="https://www.apple.com.cn/apple-music/" scrolling="no" height="595px" width="335px" style="filter: brightness(0.5); background: #fff"></iframe>
+</div>
+
+### JS变量
+
+配置js全局变量存储颜色，写内联样式
+
+```js
+const theme = {
+  color: "yellow",
+  backgroundColor: "green"
+}
+
+const mode = "dark"
+
+// 处理图片
+get themeStyle() {
+  return {
+    // 通过图片命名来区分不同主题
+    backgroundImage: require(`./assets/icon-name-${mode}.png`)
+  }
+}
+```
+
+```html
+<p :style="{ color: theme.color }">text</p>
+<p :style="themeStyle">text</p>
+```
+
+优点： 无兼容性
+
+缺点：除了写起来很麻烦，在处理图片时，为了兼容明暗两种图片，需要单独处理一次，工作量大且不易维护。不建议使用。
+
+### Sass/Less/Stylus等预编译器函数
+
+通过预编译器变量和函数生成多套主题CSS，这里以Scss为例
+
+#### 定义Scss变量
+
+```scss
+// variable.scss
+
+// 主题色
+$color-primary: #25d4d0;
+$color-primary-dark: #20a6af;
+
+$color-warning: #fe6063;
+$color-warning-dark: #fe6f63;
+
+$color-white: #fff;
+$color-white-dark: #12121f;
+
+$color-text-default: #474747;
+$color-text-default-dark: #686881;
+```
+
+#### 定义主题map
+```scss
+// theme.scss
+
+// 白天模式色值map
+$theme-light: (
+  // 背景色
+  bg-default: $color-white,
+  // 边框色
+  border-primary: $color-primary,
+  // 文本色
+  text-default: $color-text-default
+);
+
+// 深色模式色值map
+$theme-light: (
+  // 背景色
+  bg-default: $color-white-dark,
+  // 边框色
+  border-primary: $color-primary-dark,
+  // 文本色
+  text-default: $color-text-default-dark
+);
+
+// 主题名map
+$themes: (
+  light: $theme-light,
+  dark: $theme-dark,
+  ...
+);
+```
+
+#### mixin 方法生成多种主题样式
+
+##### 处理颜色
+
+参数：
+
+ - `$type` 颜色相关属性，默认为`background-color`，可以是`color`，`border-color`
+ - `$typeColor` 色值，为主题模式色值map中的key，默认`bg-default`
+ - `$alpha` 透明度，`值为 0-1`
+
+
+```scss
+@mixin setThemes($type: background-color, $typeColor: 'bg-default', $alpha: 1) {
+  @each $themename, $theme in $themes {
+    .theme-#{$themename} & {
+      #{$type}: rgba(map-get($map: $theme, $key: $typeColor), $alpha);
+    }
+  }
+}
+```
+
+使用：
+
+```scss
+.header {
+  @include setThemes(color, text-default);
+}
+```
+
+最终生成：
+
+```css
+.theme-light .header {
+  color: #474747;
+}
+
+.theme-dark .header {
+  color: #686881;
+}
+```
+
+##### 处理图片
+
+图片也存在深色模式时，通过图片命名来区分：
+
+> icon-success-light.png
+> 
+> icon-success-dark.png
+
+参数：
+
+ - `$imgUrl` 图片地址前缀
+ - `$imgType` 图片格式后缀，默认`png`
+
+```scss
+// 设置背景
+@mixin setThemesBgImg($imgUrl, $imgType: 'png') {
+  @each $themename, $theme in $themes {
+    .theme-#{$themename} & {
+      @if $imgUrl {
+        background-image: url(#{$imgUrl}-#{$themename}.#{$imgType});
+      }
+    }
+  }
+}
+```
+
+使用：
+
+```scss
+.header {
+  @include setThemesBgImg('./assets/icon-success');
+}
+
+.footer {
+  @include setThemesBgImg('./assets/icon-success', gif);
+}
+```
+
+最终生成：
+
+```css
+.theme-light .header {
+  background-image: url('./assets/icon-success-light.png');
+}
+.theme-dark .header {
+  background-image: url('./assets/icon-success-dark.png');
+}
+
+.theme-light .footer {
+  background-image: url('./assets/icon-success-light.gif');
+}
+.theme-dark .footer {
+  background-image: url('./assets/icon-success-dark.gif');
+}
+```
+
+同理也可以处理`box-shadow`。
+
+##### 特殊情况
+
+当遇到无法处理的情况，如白天有`box-shadow`，夜晚没有。这时候需要**手动处理**：
+
+```scss
+.header {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.10);
+
+  .theme-night & {
+    box-shadow: none;
+  }
+}
+```
+
+#### 改变主题
+
+通过改变根DOM的class来应用主题
+
+```html
+<div class="theme-light">
+  <header></header>
+</div>
+
+<div class="theme-dark">
+  <header></header>
+</div>
+```
+
+#### 优缺点
+
+优点： scss最终输出成css，通过该方法实现变色**无兼容性问题**，且**切换主题方便**，**处理图片**也毫不费力。
+
+缺点： 但当主题非常多时，会生成很多主题样式代码，全部打到包里，造成**样式代码冗余**，即使用户并不用这些主题。
+
+### CSS变量
+
+[使用CSS变量 - CSS（层叠样式表） | MDN](https://developer.mozilla.org/zh-CN/docs/Web/CSS/Using_CSS_custom_properties)
+
+#### 简单使用
+
+```css
+:root {
+  --color: #fff;
+  --bgColor: #25d4d0;
+}
+
+.header {
+  color: var(--color);
+  background: var(--bgColor);
+}
+```
+
+#### CSS变量存储在类名下
+
+```scss
+$theme-light: (
+  bg-default: #fff,
+  border-default: #ededed,
+  text-default: #282828
+);
+
+$theme-dark: (
+  bg-default: #1f1f29,
+  border-default: #393941,
+  text-default: #d7d7e1
+);
+
+$themes: (
+  light: $theme-light,
+  dark: $theme-dark
+);
+
+@each $themename, $theme in $themes {
+  .theme-#{$themename} {
+    @each $key, $value in $theme {
+      --#{$key}: #{$value};
+    }
+  }
+}
+```
+
+**最终生成：**
+
+```css
+.theme-light {
+  --bg-default: #fff;
+  --border-default: #ededed;
+  --text-default: #282828;
+}
+.theme-dark {
+  --bg-default: #1f1f29;
+  --border-default: #393941;
+  --text-default: #d7d7e1;
+}
+```
+
+#### 支持可变背景图片
+
+由于CSS变量不支持写路径，所以背景图片可变时，需要结合上面的Scss方案，使用上面提到的Scss的 `setThemesBgImg` mixin方法
+
+#### 改变主题
+
+所有变量都控制在了不同类名下，因此仅需更改类名即可：
+
+```typescript
+type ThemeName = 'light' | 'dark'
+
+const changeTheme = (mode: ThemeName) => {
+  mode = ['light', 'dark'].includes(mode) ? mode : 'light'
+
+  const classList = [...document.body.classList]
+  if (~classList.findIndex(i => ~i.indexOf('theme-'))) {
+    // 存在其他主题class则替换
+    document.body.className = classList
+      .map(i => {
+        if (~i.indexOf('theme-')) i = `theme-${mode}`
+        return i
+      })
+      .join(' ')
+  } else {
+    // 不存在其他主题class则添加新主题class
+    document.body.classList.add(`theme-${mode}`)
+  }
+}
+
+export { ThemeName }
+export default changeTheme
+```
+
+优点：
+
+通过js动态改变css变量的好处之一，就是可以通过服务端接口获取主题变量色值，通过后台可配置无限种主题，且不会产生冗余的CSS代码。
+
+缺点：
+
+- 不能支持可变背景图片，仍需scss方法支持图片
+- 兼容性堪忧，尤其是国内的环境......
+
+![css_var](https://static.simmzl.cn/blog/v2/imgs/css_var.png)
+
+但是Apple官网用了。
+
+![apple](https://static.simmzl.cn/blog/v2/imgs/apple.png)
+
+## 结论
+
+在主题不多时，如仅有**白天&深色模式**，适合用`预编译器方案`;
+
+在主题很多，且不考虑完美兼容性时（如国际C端），用 **css变量写颜色 + Scss方法写背景图**；
+
+在主题很多且考虑兼容性时（如国内C端），使用`预编译器方案`写样式。再开发一个webpack打包插件把单个主题样式代码抽离出来打包成单文件，切换主题时动态加载样式文件。

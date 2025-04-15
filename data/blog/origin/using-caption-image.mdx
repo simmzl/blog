@@ -1,0 +1,51 @@
+---
+title: '如何使用 CaptionImage 组件'
+date: '2023-11-01'
+tags: ['next.js', 'components', 'mdx']
+draft: false
+summary: '这篇文章展示了如何在博客中使用 CaptionImage 组件来美化图片显示'
+---
+
+# 如何使用 CaptionImage 组件
+
+在 MDX 中，我们经常需要插入图片，并添加说明文字。CaptionImage 组件可以让这个过程变得简单高效。
+
+## 基本用法
+
+下面是一个基本的使用示例：
+
+<CaptionImage
+  src="/static/images/ocean.jpeg"
+  alt="这是一张海洋图片"
+/>
+
+## 使用自定义说明文字
+
+如果你想使用与 alt 不同的说明文字，可以使用 caption 属性：
+
+<CaptionImage
+  src="/static/images/time-machine.jpg"
+  width={1200}
+  height={600}
+  alt="时光机器" 
+  caption="这是一个更详细的说明文字，可以包含更多关于这张图片的信息"
+/>
+
+## 自定义样式
+
+你还可以自定义容器和说明文字的样式：
+
+<CaptionImage
+  src="/static/images/logo.png"
+  width={500}
+  height={500}
+  alt="Logo图片"
+  containerClassName="my-8 border border-gray-200 rounded"
+  captionClassName="italic text-gray-600"
+/>
+
+## 在博客文章中使用
+
+CaptionImage 组件在博客文章中特别有用，特别是需要展示多张图片并添加说明的情况。它会自动将图片宽度设置为 100%，让图片能够自适应不同尺寸的屏幕。
+
+无论是技术教程、旅行日志还是产品展示，CaptionImage 都能帮你呈现出美观的图片效果。 

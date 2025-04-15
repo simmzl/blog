@@ -1,0 +1,193 @@
+---
+title: 利用FormData对象实现AJAX文件上传功能及后端实现
+date: '2017-12-15T15:57:53.000Z'
+tags:
+  - js
+  - php
+  - ajax
+  - javascript
+draft: false
+summary: ''
+---
+
+![mark](http://static.simmzl.cn/blog/171221/4H45b80fG1.png?imageslim)
+包括HTML基础设置、CSS界面优化、JS利用FormData对象和AJAX进行上传、后端接收文件并存储到指定路径以及删除文件操作。
+
+
+# FE
+
+## HTML
+
+基础的设置：
+
+```html
+<form enctype="multipart/form-data">
+  <input id="file" type="file" multiple="multiple" name="file" accept="...">
+  <input type="submit" value="上传">
+</form>
+```
+
+### Form的enctype属性
+
+enctype这个属性管理的是表单的MIME编码，它一共有三个属性：
+
+| 值 | 描述 |
+| ------------- |-------------|
+| application/x-www-form-urlencoded | 在发送前编码所有字符（默认） |
+| multipart/form-data | 不对字符编码，用来制定传输数据的特殊类型，如mp3、jpg |
+| text/plain | 纯文本传输 |
+
+因此，传输完整的文件数据需要`multipart/form-data`属性。
+
+### Input
+
+#### value
+
+保存了用户指定的文件的名称。
+
+#### type="file"
+
+设置input类型为file。
+
+#### multiple="multiple"
+
+可多选，不设置为单选。
+
+#### accept="..."
+
+设置可选文件的MIME_type。在设置之后点击选择文件按钮会默认显示符合设置的MIME_type的文件（存在兼容性）。具体的文件类型对应的MIME类型可以搜索到，这里列出我用到的类型：
+
+| 文件类型 | MIME类型 |
+| ------------- |-------------|
+| .txt |text/plain|
+| .pdf | application/pdf |
+| .doc | application/msword |
+| .docx | application/vnd.openxmlformats-officedocument.wordprocessingml.document |
+| .xls | application/vnd.ms-excel |
+| .ppt |application/vnd.ms-powerpoint|
+| .pptx |application/vnd.openxmlformats-officedocument.presentationml.presentation|
+
+### 效果
+
+![mark](http://static.simmzl.cn/blog/171220/fh120IGA0F.png?imageslim)
+
+太丑，不能忍...
+
+## CSS
+
+默认界面会在选择文件按钮后会跟一个显示文件名的文本区域，选择文件按钮无法编辑。
+我修改的方法是将input框隐藏，再设置一个lable标签使用户点击lable标签时触发选择文件按钮。
+
+```html
+<label for="file">选择文件</label>
+```
+
+### 效果
+
+![mark](http://static.simmzl.cn/blog/171221/4H45b80fG1.png?imageslim)
+
+## JS
+
+在使用from提交时，浏览器会向服务器发送选中的文件的内容而不仅仅是发送文件名。
+
+> 为安全起见，`<input type="file">`即file-upload 元素不允许 HTML 作者或 JavaScript 程序员指定一个默认的文件名。HTML value 属性被忽略，并且对于此类元素来说，value属性是只读的，这意味着只有用户可以输入一个文件名。当用户选择或编辑一个文件名时，file-upload 元素触发 onchange 事件句柄。
+
+利用form提交会导致页面刷新，体验不好，所以使用AJAX进行文件上传是个不错的选择。但这需要我们自己来组织通过POST请求发送的内容。
+
+### FormData对象
+
+> 通过FormData对象可以组装一组用 XMLHttpRequest发送请求的键/值对。它可以更灵活方便的发送表单数据，因为可以独立于表单使用。如果你把表单的编码类型设置为multipart/form-data ，则通过FormData传输的数据格式和表单通过submit() 方法传输的数据格式相同。
+> —— MDN web docs
+
+#### 创建FormData对象
+
+```JavaScript
+let formData = new FormData();
+```
+
+#### 向实例化对象中添加文件字段
+
+```JavaScript
+let myFile = document.getElementById('file');
+// myFile.file[0]为第一个文件（单选）,多个文件（多选）则要循环添加
+formData.append('myFile', myFile.files[0]);
+```
+
+```JavaScript
+console.log(myFile.files[0]);
+```
+
+![mark](http://static.simmzl.cn/blog/171221/6ajifkcLgC.png?imageslim)
+
+其中size属性单位是byte（字节），即b。
+
+#### 添加自定义字段
+
+```JavaScript
+formData.append('username', 'simmzl');
+```
+
+### AJAX发送
+
+```JavaScript
+let request = new XMLHttpRequest();
+request.open("POST", "http://foo.com/foo.php");
+request.send(formData);
+```
+
+### 不使用FromData对象
+
+不使用FormData对象的情况下，需要通过AJAX序列化和提交表单 ：
+[Using nothing but XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Submitting_forms_and_uploading_files)
+
+# PHP
+
+## 接收
+
+全局数组 `$_FILES`，第一个参数是表单的 input name，第二个下标是 "name", "type", "size", "tmp_name" 或 "error"。可以根据这些属性做相关限制，如**限制文件大小、文件类型等**。
+
+| 值 | 描述 |
+| ------------- |-------------|
+| name | 文件名 |
+| type | 文件的MIME类型 |
+| size | 以字节Byte为单位的文件大小 |
+| tmp_name| PHP接收文件会存为暂时文件，如需保存到指定路径还要移动这个暂时文件才可以 |
+| error| `1-7`代表7种不同错误类别以及`0`代表成功 |
+
+**error：**
+成功：0(UPLOAD_ERR_OK)
+失败：
+
+1. 超过了配置文件上传文件的大小
+2. 超过了表单设置上传文件的大小
+3. 文件部分被上传
+4. 没有文件被上传
+5. 没有找到临时目录
+6. 文件不可写
+7. 由于PHP的扩展程序中断了文件上传
+
+## 验证
+
+上传文件是通过POST发送的，`is_uploaded_file(file)`函数可以判断指定的文件是否是通过 HTTP POST 上传的，返回布尔值。
+> 该函数可以用于确保恶意的用户无法欺骗脚本去访问本不能访问的文件，例如 /etc/passwd。
+这种检查显得格外重要，如果上传的文件有可能会造成对用户或本系统的其他用户显示其内容的话。
+
+## 保存
+
+上传的文件暂存在tmp_name中，需要使用`move_uploaded_file(file,newlocation)`将上传的文件移动到指定路径，返回布尔值。
+
+```php
+if( move_uploaded_file($tmp_name, $destination) ) {
+  echo "文件上传成功";
+}else{
+  echo "文件移动失败";
+}
+```
+
+## 删除
+
+使用`unlink(filepath)`删除文件，参数是文件路径。
+
+## 拓展功能
+
+当然除了接收、验证、保存和删除这四个基本操作外，还可以添加诸如将文件路径存入数据库、生成文件列表等功能，视需求而定。

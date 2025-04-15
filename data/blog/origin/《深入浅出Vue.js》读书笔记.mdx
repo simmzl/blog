@@ -1,0 +1,350 @@
+---
+title: 《深入浅出Vue.js》读书笔记
+date: '2019-07-17T14:28:16.000Z'
+tags:
+  - vue
+  - notes
+draft: false
+summary: ''
+---
+
+> 关于vue的原理看了很多博客文章，但总是很零碎，不系统，而且可能有错误的地方。正好上次参加趣店&活动行举办的厦门大前端沙龙，提问拿到了几本书，其中包括《深入浅出Vue.js》
+> 时间慢下来好好读书吧。
+
+
+
+## Object的数据响应
+
+### 变化侦测
+
+vue的最大的特点就是响应式和组件化了。如何实现响应式......这也是网上最多的问题和文章分享的主题了。
+
+**如何侦测一个对象的变化？**
+
+目前有两个方法：
+
+- 使用ES5的Object.defineProperty
+- ES6的Proxy
+
+vue2.x使用的是defineProperty，所以不支持 IE8 及以下版本。在vue3.0中，该用了Proxy。Proxy后续也要总结一下。
+
+通过defineProperty定义数据，每次读取该数据，get函数就会被触发，每次设置新的值，set函数就会被触发。
+
+```js
+Object.defineProperty (data, key, {
+    enumerable: true,
+    configurable: true,
+    value: "",
+    get: function () {
+        return value;
+    },
+    set: function (newVal) {
+        if (value === newVal) return;
+        value = newVal;
+    }
+})
+```
+
+### 依赖收集
+
+我们之所以要监测数据的变化，是因为当数据变化时，可以通知那些使用了该数据的地方。vue的解决方法是先收集依赖，数据变化时，把收集好的依赖循环触发一遍。
+
+即，**在getter中收集依赖，在setter中触发依赖**。
+
+vue封装了一个Dep类，用于收集储存依赖，并在其封装了一些收集、删除依赖与向依赖发送通知的发放；
+
+```js
+export default class Dep {
+    constructor() {
+        this.subs = []
+    }
+
+    addSub(sub) {
+        this.subs.push(sub)
+    }
+
+    // remove...
+
+    // 收集依赖的方法，若存在一个依赖，则将该依赖push到subs数组中
+    depend() {
+        if (window.target) this.addSub(window.target);
+    }
+
+    // 循环通知每一个依赖
+    notify() {
+        // 数组深拷贝，也可用concat()
+        const subs = this.subs.silce();
+        for (let i = 0, len = subs.length; i < len; i ++) {
+            // update()为依赖 更新自己数据所定义的触发方法，后面会写
+            subs[i].update();
+        }
+    }
+}
+```
+
+vue封装了defineProperty函数，来将依赖Dep类与变化侦测相结合：
+
+```js
+function defineReactive(data, key, val) {
+
+    let dep = new Dep();
+
+    Object.defineProperty (data, key, {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+
+            // 在getter中收集依赖
+            dep.depend();
+
+            return val;
+        },
+        set: function (newVal) {
+            if (val === newVal) return;
+            val = newVal;
+
+            // 在setter中通知依赖
+            dep.notify();
+        }
+    })
+}
+```
+
+### 依赖 Watcher
+
+在vue中，依赖可能是template，也可能是用户手动写的watch；因此，vue抽象了一个能集中处理的类：Watcher。
+
+Watcher是一个中介，数据变化是通知它，然后它再通知其他地方。在setter中执行watcher.udate方法。
+
+一个常见的例子：
+
+```js
+vm.$watch("name", function(newVal, oldVal) {
+    // something
+});
+```
+
+我们在新建一个watch时，把这个watcher实例添加到name的dep中，当name改变触发setter时，遍历依赖数组dep，到该watcher时，触发其update方法，在update()中再执行我们定义的回调函数。
+
+so：
+
+```js
+export default class Watcher {
+    constructor(vm, expOrFn, cb) {
+        // vm为vue实例
+        // expOrFn为表达式或函数（这个函数可能访问了多个数据，就会创建多个依赖），在上面的例子里，expOrFn为"name"
+        // cb为回调函数,callback的缩写
+
+        this.vm = vm;
+        // 解析expOfFn的路径，读取它的值（parsePath函数是一个闭包，返回的是一个函数，该函数参数应该传这个值所在对象，其实就是vm）
+        // 所以这里getter只是一个函数
+        this.getter = parsePath(expOfFn);
+        this.cb = cb；
+        // 每实例化一个Watcher，都自动触发get(),触发收集依赖的逻辑
+        this.value = this.get();
+    }
+
+    get() {
+        window.target = this;
+        // 读取expOrFn的值，从而触发了"name"的getter，从而触发了收集依赖：dep.depend();
+        // depend() {
+        //     if (window.target) this.addSubs(window.target);
+        // }
+        // 而depend()中是将window.target存入依赖，此时windo.target指向了Watcher的this！，正好把这个Watcher存入依赖，妙啊
+        let value = this.getter.call(this.vm, this.vm);
+        // 用完window.target就置为undefined，备胎...
+        window.target = undefined;
+        return value;
+    }
+
+    // "name"数据改变时，触发它自己的setter，然后遍历依赖。触发了该watcher的update方法。
+    // 该方法调用回调函数
+    update() {
+        // 此时watcher中的value是老的值
+        const oldValue = this.value;
+        // 通过get()获取"name"最新的值，get中会判断这个watcher是否被加入到依赖中，防止重复添加依赖
+        this.value = this.get();
+        // callback中的this指向vm，然后传入newVal，oldVal，执行callback
+        this.cb.call(this.vm, this.value, oldValue);
+    }
+}
+```
+
+### 递归侦测所有的Key Observer类
+
+前面都是手动侦测一个属性，在实际中，一个对象可能有很多属性。因此，vue封装了一个Observer类，将一个数据中的所有属性，包括子属性都转换为 getter/setter 的形式，这样就不会漏掉所有的值变化。
+
+```js
+export class Observer {
+    constructor(value) {
+        this.value = value;
+
+        // 数组和对象要分开处理
+        if (!Array.isArray(value)) {
+            this.walk(value);
+        }
+    }
+
+    // 循环为每个属性添加侦测
+    walk(obj) {
+        const keys = Object.keys(obj);
+        for (let i = 0; i < keys.length; i++) {
+            defineReactive(obj, keys[i], obj[keys[i]]);
+        }
+    }
+}
+
+function defineReactive(data, key, val) {
+
+    // 如果子属性还是个对象，则递归为这个对象的子属性添加侦测
+    if (type val === "object") new Observer;
+
+    let dep = new Dep();
+
+    Object.defineProperty (data, key, {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+
+            // 在getter中收集依赖
+            dep.depend();
+
+            return val;
+        },
+        set: function (newVal) {
+            if (val === newVal) return;
+            val = newVal;
+
+            // 在setter中通知依赖
+            dep.notify();
+        }
+    })
+}
+```
+
+### object的问题
+
+在一些方法里，我们手动向已响应的对象中新增一个属性或删除一个属性：
+
+```js
+this.obj.name = "tom";
+delete this.obj.name;
+```
+
+由于未通过Observer去添加侦测，所有这些新增属性的变化就侦测不到。因此，vue通过vm.$set和vm.$delete这两个API来解决这个问题。在vue3.0中，由于使用ES6的Proxy，故不存在这个问题。
+
+## 数组的数据响应
+
+1、重写数组的方法。
+
+## 虚拟DOM
+
+在一个web应用中，状态会不断发生变化，**如何在数据变化后重新渲染到页面上？**
+
+为此，Angular用了脏检查，Vue2.0与React用了虚拟DOM。
+
+虚拟DOM：通过状态生成一个虚拟节点树（Virtual Node），然后使用虚拟节点树去渲染，每次状态发生改变时，**使用新生成的虚拟节点树和上一次生成的虚拟节点树进行对比**，只渲染不同的部分。
+
+在Vue2.0中，**每一个组件会实例化一个Watcher，当组件内状态发生变化时，只通知到组件，然后组件内部通过虚拟DOM去对比和渲染**。也就是说，**一个组件内的数据发生变化，整个组件都会编译生成新的vnode。**在Vue1.0中，每一个数据都有自己的Watcher，数据变化就通知哪些依赖节点更新，从而不需要进行对比。这种方式粒度很细，导致内存开销与依赖追踪开销很大。故Vue2.0优化了这一点，采用了中粒度的做法；
+
+Vue通过编译将模版转换成渲染函数，执行渲染函数得到了与真是DOM对应的虚拟节点树vnode。并将该**虚拟节点缓存**，数据变化时生成新的vnode，通过一个diff算法，将新vnode与oldVnode进行对比。最终更新视图。
+流程：
+![](https://static.simmzl.cn/blog/2019-07-19-%E6%9C%AA%E5%91%BD%E5%90%8D%E6%96%87%E4%BB%B6.jpeg)
+
+## VNode
+
+vue中定义了一个**VNode类**，使用它实例化不同类型的vnode实例，来表示不同的DOM元素。这些vnode其实就是一个普通的对象，使用不同的属性来描述DOM的属性。
+
+```js
+// VNode类代码
+export default class VNode {
+    constructor(tag, data, children, text, elm, context, componentOptions, asycncFactory) {
+        this.tag = tag;
+        this.data = data;
+        // ...
+    }
+
+    getChild() {
+        return this.componentInstance;
+    }
+}
+```
+
+### VNode类型
+
+- 注释节点
+- 文本节点
+- 元素节点
+- 组件节点
+- 函数式节点
+- 克隆节点
+
+举个例子：
+
+**文本节点：**
+
+```js
+export function createTextVNode(val) {
+    return new VNode(undefined, undefined, undefined, String(val));
+}
+```
+
+通过这个方法就生成一个文本节点：
+
+```js
+{
+    text: "xxx"
+}
+```
+**克隆节点**用于优化静态节点和插槽节点。即创建克隆节点把原节点属性克隆一遍。
+
+**元素节点**
+
+```html
+<p><span>hi</span></p>
+```
+
+对应：
+
+```js
+{
+    children: [VNode],
+    context: {...}, // 当前组件的Vue实例，每个组件都是一个Vue实例
+    data: {...},
+    tag: "p",
+    ...
+}
+```
+
+## patch
+
+patch本身就有补丁修补的意思。
+
+DOM操作的执行速度远不如js的运算速度快，因此把大量DOM操作搬运到js中，使用patching算法来计算出真正需要更新的几点，最大限度的减少DOM操作，从而显著提升性能。
+
+patch需要做三件事：
+
+### 创建新增节点
+
+当一个节点在oldVNode中不存在，而新生成的VNode存在，就需要使用vnode生成真实的DOM元素，并将其插入到视图当中。
+
+对于新增的元素节点，通过**document.createElement()**来创建DOM，再通过**parentNode.appendChild()**插入父级中。
+
+若这个节点有子节点，还需先创建子节点。递归循环这个vnode的children属性，为每一个子节点创建元素，插入新创建的父级元素中。
+
+### 删除节点
+
+同新增，使用parentNode.removeChild();
+
+### 更新节点
+
+对于静态节点，即`<p>hi</p>`这种，第一次渲染后不会再变化，所以这种节点会跳过更新节点过程。有助于提升性能。
+
+- 如果新的节点是文本节点，即有text属性，那就直接把原DOM的node.textContent换成新节点文本。
+
+- 若不是文本节点，即元素节点。没有children属性的话，就是一个空元素，若oldVNode中该节点有内容，就删除该节点下的内容，就成了空元素。
+
+- 到最后只剩新的vnode与oldVnode都存在children属性了，此时更新子节点的逻辑：
+
+循环newChildren，每循环到一个新子节点，就去oldChild中找是否存在和当前节点相同的旧节点。若找到了，就继续判断，若是静态、文本、空、有children之类的情，就这样递归。如果位置不同，就移动节点。
+

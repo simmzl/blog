@@ -1,0 +1,258 @@
+---
+title: 数据库的连接、增删查改等操作以及PHP相应功能的实现
+date: '2017-12-31T14:42:51.000Z'
+tags:
+  - mysql
+  - php
+  - database
+draft: false
+summary: '!'
+---
+![mark](http://static.simmzl.cn/blog/171231/EB789gDI79.png?imageslim)
+最近做的项目后端要自己写，总结一下数据库基本的连接、增删查改等语句以及相应功能利用PHP实现。
+
+
+# 连接/关闭 MySQL主机
+
+## 连接
+
+`mysql_connect()` 函数打开非持久的 MySQL 连接，它最常用到的三个参数是MySQL主机名称、用户名、密码。
+
+```php
+// php
+// MySQL主机名称，通常是 localhost
+$mysql_server_name='localhost';
+// 资料库的帐号
+$mysql_username='username';
+// 资料库的帐号密码
+$mysql_password='password';
+// 数据库的名称
+$mysql_database='your_database';
+// 连接
+$con=mysql_connect($mysql_server_name,$mysql_username,$mysql_password) or die("error connecting");
+
+// 以上可以简写
+$con=mysql_connect('localhost','username','password') or die("error connecting");
+
+// 数据库输出编码
+mysql_query("set names 'utf8'");
+// 打开数据库'your_database'
+mysql_select_db($mysql_database);
+// 定义sql语句
+$sql = "select * from table where username = demo";
+// 执行sql语句
+$row = mysql_query($sql,$con); //查询
+```
+
+## 删除
+
+```php
+// 关闭mysql连接
+mysql_close($con);
+```
+
+# 执行MySQL语句
+
+`mysql_query(query,connection)`函数执行一条 MySQL 查询，如果查询执行不正确则返回 FALSE。
+
+- `query` MySQL语句
+- `connection` 主机连接，如果未规定，则使用上一个打开的连接。
+
+# 新建/删除 数据库
+
+## 新建
+
+MySQL语句：`CREATE DATABASE my_db`；
+
+```php
+// 定义sql语句
+$sql = "CREATE DATABASE my_db";
+// 执行sql语句
+$row = mysql_query($sql,$con);
+```
+
+## 删除
+
+MySQL语句：`DROP DATABASE my_db`；
+
+```php
+$sql = "DROP DATABASE my_db";
+$row = mysql_query($sql,$con);
+```
+
+# 新建/删除 数据表
+
+## 新建
+
+```sql
+CREATE TABLE table_name (column_name column_type);
+```
+
+- `column_name` 为列名，即字段名
+- `column_type` 为该字段属性
+
+phpMyAdmin:
+
+![mark](http://static.simmzl.cn/blog/171231/G5i3iL06ge.png?imageslim)
+
+```php
+$sql = "CREATE TABLE  `machine_data`.`00000003` (
+`id` INT( 20 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+`date` INT( 20 ) NOT NULL ,
+`wind_speed` FLOAT NOT NULL ,
+`temperature` FLOAT NOT NULL ,
+`humidity` FLOAT NOT NULL
+) ENGINE = MYISAM"
+$result = mysql_query($sql,$con);
+```
+
+## 删除
+
+```sql
+DROP TABLE table_name ;
+```
+
+# 向表中插入数据（增）INSERT
+
+```sql
+INSERT INTO table_name ( field1, field2,...fieldN )
+                       VALUES
+                       ( value1, value2,...valueN );
+```
+
+例如用户注册功能：
+
+```php
+// POST接收（默认已运行addslashes()转义字符）
+$username = $_POST['username'];
+$password = $_POST['password'];
+$email = $_POST['email'];
+
+$sql = "insert into user (username,password,email) values ('{$username}','{$password}','{$email}')";
+$result = mysql_query($sql,$con);
+```
+
+# 删 DELETE
+
+```sql
+DELETE FROM table_name [WHERE Clause]
+```
+
+ps: 如果没有指定 WHERE 子句，MySQL 表中的所有记录将被删除。
+
+例如删除用户名为`simmzl`的用户：
+
+```php
+$sql = " DELETE FROM user WHERE username = simmzl ";
+```
+
+# 查 SELECT
+
+## SELECT
+
+```sql
+SELECT column_name,column_name... FROM table_name
+[WHERE Clause]
+[LIMIT N][ OFFSET M]
+```
+
+- 也可以使用`*` 代替`column_name`，表示查询所有。
+- `LIMIT` 设定返回的记录数
+- `OFFSET` 设定开始查询的数据偏移量。默认情况下偏移量为0。
+
+例如查询用户名为`simmzl`的用户信息：
+
+```php
+// 数据库输出编码
+mysql_query("set names 'utf8'");
+// 打开数据库'your_database'
+mysql_select_db("my_db");
+$sql = "SELECT * FROM user WHERE USERNAME = simmzl";
+$result = mysql_query($sql, $con);
+```
+
+## ORDER BY 排序
+
+```sql
+ORDER BY field1, [field2...] [ASC [DESC]]
+```
+
+- `ASC` 升序
+- `DESC`降序
+
+例如将所有用户信息输出并按照`username`升序排序：
+
+```php
+$sql = "SELECT * FROM user ORDER BY username ASC";
+```
+
+## mysql_fetch_array()
+
+`mysql_query()` 仅对 `SELECT`语句返回一个资源标识符，因此还需要使用`mysql_fetch_array(data,array_type)`将取得的数据转成数组。
+
+`array_type`有三个值：
+
+- `MYSQL_ASSOC` - 关联数组，如： [username] => simmzl
+- `MYSQL_NUM` - 数字数组，如：[0] => simmzl
+- `MYSQL_BOTH` - 默认。同时产生关联和数字数组
+
+因此，在执行`$result = mysql_query($sql, $con)`后，还需执行
+
+```php
+// 转成关联数组
+$res = mysql_fetch_array($result,MYSQL_ASSOC);
+echo $res;
+```
+
+```php
+Array
+(
+[username] => simmzl
+[pwd] => xxx
+[email] => me@simmzl.cn
+)
+```
+
+在当`mysql_query()`查询结果有多行时，依次调用`mysql_fetch_array()`将返回结果集中的下一行，如果没有更多行则返回 FALSE。
+因此使用while循环取出所有行数据：
+
+```php
+while($tmp[] = mysql_fetch_array($result,MYSQL_ASSOC)){};
+// tmp[]最后一个值为flase，故删除
+array_pop($tmp);
+```
+
+## json_encode()
+
+将**数组**转成**前端**想要的**JSON格式**
+
+```php
+echo json_encode($res);
+```
+
+```php
+[
+  {
+    "username": "simmzl",
+    "pwd": "xxx",
+    "email": "me@simmzl.cn"
+  }
+]
+```
+
+## json_decode()
+
+相反，将JSON转成数组。
+
+# 改 UPDATE
+
+```sql
+UPDATE table_name SET field1=new-value1, field2=new-value2
+[WHERE Clause]
+```
+
+例如修改`simmzl`的密码和邮箱：
+
+```php
+$sql = "UPDATE user SET pwd = xxxx, email = hr@simmzl.cn WHERE username = simmzl";
+```

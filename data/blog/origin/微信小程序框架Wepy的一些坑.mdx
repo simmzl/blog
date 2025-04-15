@@ -1,0 +1,282 @@
+---
+title: 微信小程序框架Wepy的一些坑
+date: '2019-04-09T10:46:18.000Z'
+tags:
+  - miniprogram
+draft: false
+summary: ''
+---
+
+相较于原生将js、wxss、wxml、json配置分开，wepy采用单文件模式，很贴近vue语法，对es6、css预处理器等的支持效率提升很多，但是坑也是有很多，记录下避免重复踩坑浪费时间。
+
+
+
+### 页面实例与组件实例继承要对应
+
+在写组件时把组件写成继承自wepy.page，导致组件无法渲染
+
+```javascript
+// 页面继承自wepy.page
+export default class Index extends wepy.page {}
+
+// 组件继承自wepy.component
+export default class Card extends wepy.component {}
+```
+
+Page页面实际上继承自Component组件，即Page也是组件。除扩展了页面所特有的config配置以及特有的页面生命周期函数之外，其它属性和方法与Component一致，但声明继承不能错。
+
+```javascript
+import wepy from 'wepy';
+
+export default class MyPage extends wepy.page {
+// export default class MyComponent extends wepy.component {
+
+    config = {};  // 只在Page实例中存在的配置数据，对应于原生的page.json文件
+
+    customData = {}  // 自定义数据
+
+    data = {};  // 页面所需数据均需在这里声明，可用于模板数据绑定
+
+    components = {};  // 声明页面中所引用的组件，或声明组件中所引用的子组件
+
+    mixins = [];  // 声明页面所引用的Mixin实例
+
+    computed = {};  // 声明计算属性（详见后文介绍）
+
+    watch = {};  // 声明数据watcher（详见后文介绍）
+
+    methods = {};  // 声明页面wxml中标签的事件处理函数。注意，此处只用于声明页面wxml中标签的bind、catch事件，自定义方法需以自定义方法的方式声明
+
+    events = {};  // 声明组件之间的事件处理函数
+
+    customFunction ()　{}  //自定义方法
+
+    onLoad () {}  // 在Page和Component共用的生命周期函数
+
+    onShow () {}  // 只在Page中存在的页面生命周期函数
+}
+```
+
+### props静态与动态传值
+
+静态传值为父组件向子组件传递**常量数据**，因此只能传递**String字符串类型**
+
+```html
+<child title="mytitle"></child>
+```
+
+动态传值像Vue，但是传的数据需要是在父组件声明过或者引用类型，**不能直接传Boolean、Number等基础类型**
+
+```xml
+// 正确：
+<child :title="parentTitle" :syncTitle.sync="parentTitle" :twoWayTitle.sync="parentTitle"></child>
+
+data = {
+    parentTitle: 'p-title'
+};
+
+
+// child.wpy
+
+props = {
+    // 静态传值
+    title: String,
+
+    // 父向子单向动态传值
+    syncTitle: {
+        type: String,
+        default: 'null'
+    },
+
+    twoWayTitle: {
+        type: String,
+        default: 'nothing',
+        twoWay: true
+    }
+};
+
+// 错误 不能动态传值传基础类型，必须声明
+<child :myNumber="12" :myNumber1.sync="12" :isTrue="true"></child>
+```
+
+### 同一页面重复引用同一组件相关问题
+
+#### 循环渲染使用`<repeat>`
+
+循环渲染组件时必须使用**wepy特有的辅助标签`<repeat>`**，而不是使用原生的`wx:for`
+
+```html
+<repeat for="{{list}}" key="index" index="index" item="item">
+    <!-- 插入<script>脚本部分所声明的child组件，同时传入item -->
+    <child :item="item"></child>
+</repeat>
+
+<script>
+    import wepy from 'wepy';
+    import Child from './child';
+
+    export default class Index extends wepy.page {
+        // 声明组件ID为child
+        components = {
+            child: Child
+        }
+
+        data = {
+            list: [{id: 1, title: 'title1'}, {id: 2, title: 'title2'}]
+        }
+    }
+</script>
+```
+
+#### 重复引用需为每个组件声明ID
+Wepy中的组件都是静态组件，是**以组件ID作为唯一标识**的，每一个ID都对应一个组件实例。
+当页面引入两个相同ID的组件时，这**两个组件共用同一个实例与数据**，当其中一个组件数据变化时，**另外一个也会一起变化**。
+
+这也是不同于vue的地方，当同一页面使用同一组件较多次时，这就很难受了。
+
+如果需要避免这个问题，必须**需要分配多个组件ID和实例：**
+
+```html
+<template>
+    <view class="child1">
+        <form-item1></form-item1>
+        <form-item2></form-item2>
+    </view>
+</template>
+
+<script>
+    import wepy from 'wepy';
+    import FormItem from './formItem';
+
+    export default class Index extends wepy.page {
+        components = {
+            //为两个相同组件的不同实例分配不同的组件ID，从而避免数据同步变化的问题
+            "form-item1": FormItem,
+            "form-item2": FormItem
+        };
+    }
+</script>
+```
+
+#### 组件内动态绑定class，且类名含"-"时，渲染会自动加上ID
+
+```html
+
+// index.wpy
+<template>
+    <view>
+        <form-item1 :isActive.sync="isActive"></form-item1>
+        <form-item2></form-item2>
+    </view>
+</template>
+
+<script>
+    import wepy from 'wepy';
+    import FormItem from './formItem';
+
+    export default class Index extends wepy.page {
+
+        data = {
+            isActive: true
+        }
+
+        components = {
+            //为两个相同组件的不同实例分配不同的组件ID，从而避免数据同步变化的问题
+            "form-item1": FormItem,
+            "form-item2": FormItem
+        };
+    }
+</script>
+
+
+// formItem.wpy
+<template>
+    <view :class="{"vk-activity': isActive}"></view>
+</template>
+
+<script>
+    import wepy from 'wepy';
+
+    export default class Index extends wepy.component {
+
+        props = {
+            isActive: {
+                type: Boolean，
+                default: false
+            }
+        }
+    }
+</script>
+```
+最终index.wpy会被渲染成wxml：
+
+```html
+<view>
+    <view class="vk- formItem1 activity"></view>
+    <view></view>
+</view>
+```
+解决方法是不用**横杠的类名，改用驼峰或单个单词等。**
+
+### 改组件名后，wepy报组件找不到错
+
+改动组件名时**wepy有时不会立即生成wxml**，这时候看dist生成的wxml是没有文件或者文件不对，可**删除dist中的对应wxml文件**，手动触发wpy文件改动就可以了。
+
+### 组件中引用组件时，最底层组件变动有时不会触发上层或上几层页面的热加载
+
+不触发热加载很坑，应该是嵌套多层的原因，ctrl+c再run dev重新跑项目，不行就删了dist中的组件再重新编译。
+
+### 异步函数中更新数据，必须手动调用$apply()，才会触发脏数据检查
+
+### wepy对原生API进行了promise处理，但也有一些问题
+
+在原生API中往往是采用回调的形式：
+
+```js
+wx.showModal({
+    title: "提示",
+    content: "这是一个模态弹窗",
+    success(res) {
+        if (res.confirm) {
+            console.log("用户点击确定")
+        } else if (res.cancel) {
+            console.log"用户点击取消")
+        }
+    }
+})
+```
+
+在wepy中，配合polyfill可以使用`async await`处理异步函数；
+
+在`app.wpy`入口文件中声明:
+
+```js
+export default class extends wepy.app {
+    constructor() {
+        super();
+        this.use("requestfix");
+        // 声明使用promisify
+        this.use("promisify");
+    }
+}
+```
+就可以使用`await async`了：
+
+```js
+async handleXx() {
+    const res = await wepy.showModal();
+    if (res.confirm) console.log("用户点击确定");
+}
+```
+
+但是部分API还是有问题的，如[getUpdateManager()](https://developers.weixin.qq.com/miniprogram/dev/api/wx.getUpdateManager.html)；
+
+`wepy.getUpdateManager()`会返回一个promise,但无resolved，不是updateManager对象。
+
+为此我在wepy github仓库提了一个[issue](https://github.com/Tencent/wepy/issues/2102)，但是没有维护人员的回复，感觉wepy没人维护了...
+
+解决方法是使用原生方法`wx.getUpdateManager()`
+
+### 预先在data中声明值
+
+在dom上使用值做判断时，该值一定要在data里先声明，否则值改变时，dom不会变化

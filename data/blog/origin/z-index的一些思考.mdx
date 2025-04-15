@@ -1,0 +1,45 @@
+---
+title: z-index的一些思考--堆叠上下文
+date: '2019-09-29T16:57:22.000Z'
+tags:
+  - css
+draft: false
+summary: ''
+---
+
+在一些层级较多的页面，z-index是神器，但不熟悉z-index常常导致一些层级问题很难解决。比如为什么这个z-index比那个大，还在它下面？
+
+
+
+## position !== static
+
+z-index决定了元素在Z轴上的层级，如果你熟悉photoshop的话，其实就是等同于ps的**图层**。
+
+但是z-indx的生效是有条件的，即**`position`属性值不是`static`的元素**。
+
+这有可能是**z-index不生效的原因之一**。
+
+## 父子关系下的z-index
+
+设置一个`position !== static`的元素`z-index`的同时，会创建一个新的本地**堆叠上下文**，在这个元素之下，**其所有的子元素的层级都会和该父元素相同**，无论怎么设置z-index，即使是设置`position = absolute/fixed`。
+
+这就类似ps里的组的概念，在一个组内，一个图层永远比在这个组之上的图层等级低。
+
+所以，当“为什么这个z-index比那个大，还在它下面？”发生时，检查：
+
+- 是否未设置position
+- 是否父级设置了z-index
+
+## 堆叠上下文
+
+The stacking context.
+
+HTML 内元素发生层叠的时候的特定垂直顺序,即元素在用户视线方向上的顺序。
+
+在一个堆叠上下文中，元素都是有等级顺序的，即：
+
+`正z-index > 内联元素 > 浮动元素 > 块级元素 > 负z-index > border > background`
+
+具体的内容就不赘述了，参考：[CSS堆叠上下文（The stacking context）](https://www.jianshu.com/p/2bc43e9680bc)
+
+

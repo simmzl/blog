@@ -1,0 +1,25 @@
+---
+title: js中把字符串变成变量名
+date: '2017-08-08T13:42:23.000Z'
+tags:
+  - js
+  - javascript
+draft: false
+summary: ''
+---
+
+> 定义：eval() 函数可计算某个字符串，并执行其中的的 JavaScript 代码。
+
+做一个demo的时候遇到需要批量生成变量名的地方，如下：
+
+```javascript
+var myChart = "myChart" + index;
+myChart.setOption(option);
+```
+
+index为函数参数； 但是"myChart"只是一个字符串，并不是变量名！
+搜索得出解决方法：
+
+```javascript
+var myChart = eval("myChart" + index);
+```

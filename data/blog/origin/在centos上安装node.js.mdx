@@ -1,0 +1,53 @@
+---
+title: 在centos上安装node.js
+date: '2017-10-30T09:06:26.000Z'
+tags:
+  - centos
+  - node
+  - node.js
+draft: false
+summary: ''
+---
+
+我的云服务器是centos 6.8 64位，最近需要在服务器上跑node.js程序，所以安装了node.js，网上有很多办法，试了一些，有些没用，踩了一点坑，总结一下。
+
+
+# 安装
+
+## 下载node.js包
+
+首先通过wget下载node.js包，因为服务器是64位，所以在官网选择64位的版本下载链接；
+
+```bash
+#wget https://nodejs.org/dist/v6.10.1/node-v6.10.1-linux-x64.tar.xz
+```
+
+## 解压
+
+```bash
+#tar xvf node-v0.12.0.tar.gz
+```
+
+## 进入目录
+
+```bash
+#cd node-v4.2.3-linux-x86/bin
+#node -v
+//v4.2.3 成功！
+```
+
+# 配置
+
+要想全局使用还需要配置连接
+
+```bash
+#ln -s /root/node-v4.2.3-linux-x86/bin/node /usr/local/bin/node
+# ln -s /root/node-v4.2.3-linux-x86/bin/npm /usr/local/bin/npm
+```
+
+然后在根目录测试：
+
+```bash
+#node -v
+//v4.2.3 成功！
+```

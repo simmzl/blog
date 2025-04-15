@@ -1,0 +1,264 @@
+---
+title: Git工作流及常见命令
+date: '2018-03-23T14:24:19.000Z'
+tags:
+  - git
+  - notes
+draft: false
+summary: ''
+---
+
+多人协作Git操作必不可少，结合实际工作中遇到的需求和问题，总结下整个Git工作流以及常用到的Git命令。
+
+
+
+## 常用分支约定
+
+### 主分支
+
+用于正式上线发布；`master`
+
+### 开发分支
+
+用于开发，融合功能分支；在开发分支的基础上可以新建很多具体功能分支、BUG分支；`dev`
+
+### 测试分支
+
+用于测试部署；`test`
+
+## 开发流程
+
+每个新功能的开发，都要先`git pull`更新开发分支`dev`，然后在其基础上新建自己的分支。开发完成后自测功能没有BUG，`git push`自己的分支和代码到远程仓库，之后在平台上发起`pull/merge request`申请把自己的分支融合到`dev`分支。
+以某新功能开发为例：
+
+- `git init` 新建本地git仓库，就可以开始折腾了。
+
+- `git clone`远程仓库到本地
+- `git checkout dev`切换到本地分支
+- `git pull`更新本地代码到最新
+- `git checkout -b czl/0323/feature` 建立新功能的开发分支，分支命名格式要统一，可以是为`{名字首字母}/{日期}/{新功能名}`
+- `git push --set-upstream origin czl/0323/feature` 将新建的分支推送到远端仓库
+- 开发自测没问题后，`git add .` `git commit -m ""` `git push`到远程分支
+- 在平台上发起`merge request`，等待代码审核
+
+## 常见Git命令
+
+### 仓库关联 & branch
+
+
+- `git remote add origin git@github.com:git_username/repository_name.git` 本地目录下关联远程仓库
+- `git remote remove origin` 取消本地目录下关联的远程仓库
+
+
+- `git checkout <branchname>` 切换分支
+- `git checkout -b <local-branchname>` 新建本地分支
+- `git branch` 查看本地分支
+- `git branch -r` 查看远程分支
+- `git branch -a` 查看本地和远程所有分支
+- `git branch -d <local-branchname>` 删除本地分支
+- `git branch -D <local-branchname>` 强制删除本地未合并分支
+- `git push origin --delete <remote-branchname>` 删除远程分支
+- `git push origin <local-branchname>:<remote-branchname>` 将本地分支push到远程分支上，这个远程分支不存在，且会被命名为命令里指定的`<remote-branchname>`
+- `git push origin :<remote-branchname>` 将一个空分支push到远程分支上，即删除这个分支
+
+
+### merge & diff
+
+
+- `git merge --abort` 合并分支后未提交，可撤销merge
+
+- `git cherry-pick -n <commit-id> <commit-id>` 分支仅合并另一个分支的某一个commit
+
+  >如A分支想合并B分支上具体某一个或多个commit，可在A分支上执行上述命令，字面意思 “拣选，摘樱桃”
+  > 
+  > `-n` 的意思是合并过来后是已add暂存，未commit的状态。不加则直接自动完成commit
+
+- `git diff` 对比本地与暂存区的具体差异，如果使用了`git add`，是无法看到自己的更改差异的
+- `git diff filePath` 对比指定文件的与暂存区的不同，这个`filePath`可以通过`git status`看得到
+- `git diff --word-diff` 详细展示一行中的修改
+- `git diff <commit-id> <commit-id>` 查看两个 commit 的不同
+- `git diff branch1 branch2 --stat` 查看两个分支文件变动对比，类似于`git status`的效果，在本地执行master merge develop时很需求这个
+- `git diff branch1 branch2` 查看两个分支具体差异，类似于`git diff`
+
+
+- `git status` 显示工作目录和暂存区的状态（相较于暂存区，工作区更改了哪些文件）
+- `git log` 查看commit的历史；
+- `git show [commitHashID]` 查看具体某个commit的提交详情；
+
+### config
+
+有时候可能会遇到在无任何修改时，diff整个文件全部变动的情况，可能是文件权限变动的原因
+
+
+- `git config --add core.filemode false` 当文件权限被无意改动时，`git diff`会提示 `old mode 100755` `new mode 100644`诸如此类，无法使用`git checkout .`舍弃掉，可以通过该命令忽略 **单个项目** 文件权限
+- `git config --global core.filemode false` 全局忽略文件权限
+
+
+### 回滚 reset & revert
+
+- `git reset HEAD~n` 回退到前几个commit版本；`n=1`则为回退到最新的commit未`git add`时的状态，该commit的文件变动仍存在，使用`git checkout .`可清空。`HEAD`是当前分支引用的指针，`HEAD～1`则是上一次
+- `git reset <commitHashID>` 回退到hash对应commit，若想回到`commit1`，这个`commitHashID`需为`commit1`上一个`commit`的`hash`,此时`commit1`的文件变动存在，为未`git add`的状态
+- `git reset --hard <commitHashID>` 上一条为例，加`--hard`的不同是会把`commit1`的变动**删除掉**
+- `git reset --hard HEAD~n` 回到上个提交，舍弃本地未提交的内容。
+
+  > 关于`reset & revert` 的tips：
+  > 
+    > 如果在本地去reset**未push到远程**的commit，不会有任何问题，reset掉的commit不会出现在`git log`里，是真正意义上的删除原先的commit。
+    >
+    > 但如果要在本地reset**已push到远程**的commit，在本地reset后push到远程，会提示`更新被拒绝，因为您当前分支的最新提交落后于其对应的远程分支。`，这是因为reset把原来的commit删除掉了，造成了落后。此时根据提示`git pull`，如果改动了统一文件同一地方，**会报冲突**，还需要解决冲突。如果合并一些老的分支时，可能删除的commit又被合回来了。
+    >
+    > 因此`reset`更适合**回退本地commit**使用，这时候可能需要`git revert`登场了。
+    >
+    > `revert`其实就是用一个新的commit来抵消要回滚的commit，`reset`则是删除要回滚的commit。
+    > `git revert`自动提交commit，直接`git push`即可提交
+
+- `git revert HEAD`创建一个新的commit回滚掉最新的一个commit
+- `git revert commitId`回滚具体的commit
+
+- `git checkout test.js` 舍弃某一文件的本地修改
+- `git checkout .` 舍弃本地所有修改
+
+### git stash
+
+- `git stash` 将本地修改记录保存到堆栈中
+- `git stash list` 查看堆栈中现有储藏
+
+    ```shell
+    $ git stash list
+    stash@{0}: WIP on master: 049d078 added the index file
+    stash@{1}: WIP on master: c264051 Revert "added file_size"
+    stash@{2}: WIP on master: 21d80a5 added number to log
+    ```
+
+- `git stash apply` 将最新的储藏应用到本地
+- `git stash apply stash@{2}` 应用指定储藏
+- `git stash drop stash@{2}` `apply`应用储藏后不会删除，使用`drop`可删除指定储藏
+- `git stash pop` 应用最想念储藏且从堆栈中删除储藏
+- `git stash clear` 删除所有储藏
+- `git stash show stash@{n}` 显示文件变动，不带`stash@{n}`默认显示储藏第一个
+  
+  ```sh
+    src/pages/a.vue   |  2 +-
+    src/pages/ibndex.vue | 16 +++++++++++++---
+  ```
+- `git stash show -p stash@{n}` 显示文件具体diff，不带`stash@{n}`默认显示储藏第一个
+
+  ```sh
+    - <div></div>
+    + <div>diff</div>
+  ```
+- `git stash -p` stash**部分文件**，这是个交互式命令，会遍历询问每个文件内容是否储藏
+
+  ```sh
+  >> git stash -p
+  >> <diff>
+  >> Stash this hunk [y,n,q,a,d,e,?]?
+  ```
+
+  [y,n,q,a,d,e,?] 具体含义：
+
+  ```sh
+   y - stage this hunk
+   n - do not stage this hunk
+   q - quit; do not stage this hunk nor any of the remaining ones
+   a - stage this hunk and all later hunks in the file
+   d - do not stage this hunk nor any of the later hunks in the file
+   g - select a hunk to go to
+   / - search for a hunk matching the given regex
+   j - leave this hunk undecided, see next undecided hunk
+   J - leave this hunk undecided, see next hunk
+   k - leave this hunk undecided, see previous undecided hunk
+   K - leave this hunk undecided, see previous hunk
+   s - split the current hunk into smaller hunks
+   e - manually edit the current hunk
+   ? - print help
+  ```
+  正常情况下，需要stash就是y，不需要就是n，后面没有需要stash的文件就q。
+
+### git rebase
+
+不赘述了，常用的一个场景：从 `master` 分支拉出来的 `feature` 分支在每次开发前，执行 `git rebase master`，以保持 `feature` 和 `master` commit同步。避免使用 `git merge master` 造成没必要的 `commit记录` 污染。
+
+执行 `git rebase master` 遇到冲突时，git 会停止 rebase 并会让你解决冲突。在解决完冲突后，用 `git add` 暂存，然后执行 `git rebase --continue` 继续rebase，注意无需commit⚠️
+
+执行 `git rebase —abort` 终止rebase操作，分支会回到 rebase 开始前的状态。
+
+原理：
+
+ - 首先， git 会把 feature 分支的每个 commit 取消掉；
+ - 其次，把上面的操作临时保存成 patch 文件，存在 .git/rebase 目录下；
+ - 然后，把 feature 分支更新到最新的 master 分支；
+ - 最后，把上面保存的 patch 文件应用到 feature 分支上；
+
+### 解决冲突
+
+- `git checkout file --our/theirs` 解决冲突(resolve conflict)，ours本地，theirs非本地
+- `git checkout --our/theirs .` 解决冲突(resolve conflict)，ours本地，theirs非本地，应用全部文件
+
+## 实际需求
+
+### 在github上新建一个空仓库，来关联本地仓库，这是github的官方提示：
+
+```sh
+git init
+git add README.md
+git commit -m "first commit"
+git remote add origin https://github.com/username/repositoryName.git 关联远程仓库
+git push -u origin master
+```
+
+或者直接关联本地已有仓库
+
+```sh
+git remote add origin https://github.com/username/repositoryName.git
+git push -u origin master
+```
+
+### 本地分支在开发中需要pull远程已经更新过的dev分支：
+
+- 从本地分支`local`切回`dev`分支：`git checkout dev`;
+- 更新本地`dev`分支： `git pull`;
+- 切回本地分支`local`：`git checkout local`;
+- 将更新过后的本地`dev`分支`merge`到`local`分支: `git merge dev`.
+- done!
+
+### 正在开发一半的代码，需要改一下上次commit的一个bug，但又不想提交正在开发的代码：
+
+使用`git stash`暂存当前的工作，回退到某个版本执行一定操作后再取回暂存的代码：
+
+- `git stash` 暂存当前的工作；
+- `git reset HEAD~n` n表示最近几次的提交，1则是最近一次的提交，回退到最近一次提交的版本。
+- `git stash pop` 将暂存的代码取回。
+
+### 分支命名错误，重新命名：
+
+- `git branch -m old_loal_branch_name new_local_branch_name` 重命名本地分支
+- `git push origin :old_local_branch_name` 删除远程分支
+- `git push origin new_local_branch_name` 重新推送提交本地分支
+
+### 回滚
+
+### cherry-pick
+
+#### 场景：
+- 在A分支创建新分支A1
+- commit(commit-id: aaaaaaaa)后合入B分支
+- 删除A1
+- 此时在A分支若想合入`aaaaaaaa`的commit，执行`git cherry-pick -n aaaaaaaa`，会报错：`bad version aaaaaaaa`，因为该commit的原分支信息已丢失，无法合入
+
+#### 解决
+
+- 拉去`aaaaaaaa`来创建一个新的分支：`git checkout -b <new_branch_name> aaaaaaaa`
+- 然后再执行`git cherry-pick -n aaaaaaaa`
+
+## 坑
+
+### Git钩子
+
+可以使用`husky`或其他插件在precommit或者prepush时执行脚本命令。
+遇到个问题:
+在commit之前，会自动执行`npm run -s precommit`, 然后根据`package.json > scripts > "precommit": "npm run lint"` ，执行`npm run lint`进行代码校验。但是自动执行`npm run -s precommit`时会报“npm 不是内部或外部命令”，手动执行`npm run -s precommit`一切正常，且`node`、`npm`全局环境均已配好。目前还不知道原因所在，只能通过`git commit --no-verify`绕过验证.
+
+## MORE
+
+[Git挂钩](https://git-scm.com/book/zh/v1/自定义-Git-Git挂钩)

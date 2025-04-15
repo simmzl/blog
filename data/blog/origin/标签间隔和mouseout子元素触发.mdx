@@ -1,0 +1,41 @@
+---
+title: 标签间隔和mouseout子元素触发
+date: '2017-08-17T17:39:25.000Z'
+tags:
+  - js
+  - html
+  - q&a
+draft: false
+summary: ''
+---
+
+**Q：**设置了几个a标签，设marign和padding均为0时，a标签之间仍有间隔；
+**A：**
+
+- 去掉a标签之间的空格，换行等，实现`<a></a><a></a><a></a>`
+
+- 父级设置font-size:0；子级再设置具体的font-size；
+
+
+**Q：** 为元素P添加mouseout事件时，当鼠标移到其子元素a时，也会触发事件。
+
+```html
+<p>
+    <a>1</a>
+    <a>2</a>
+    <a>3</a>
+</p>
+```
+
+**A：**这是js原生自带的问题，解决方法两种：
+
+- 使用mouseleave替代mouseout;
+- onmouseenter 事件不支持冒泡 ;
+- 不过mouseenter和mouseleave有个小问题：让鼠标从文档外直接进入绑定事件的元素时，mouseenter不生效；
+- 使用jQ的mouseout替代原生的onmouseout；
+
+**拓展：**
+
+- onmouseenter对应onmouseleave;
+- onmouseover对应onmouseout;
+- onmouseup（鼠标按键被松开时）对应onmousedown.

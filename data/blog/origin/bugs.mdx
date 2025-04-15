@@ -1,0 +1,51 @@
+---
+title: bugs
+date: '2019-03-05T18:26:16.000Z'
+tags:
+  - bug
+  - css
+  - html
+  - js
+  - vue
+  - elementui
+  - notes
+draft: false
+summary: ''
+---
+
+用心写的bug...当然要好好记录下来...
+
+
+
+## html/css/js相关
+
+### 使用vue + element做表单，enter回车时触发页面刷新
+
+D(description)
+
+当给input框加` @keyup.enter.native `回调事件时仍触发页面刷新。
+
+R(reason)
+
+其实这和vue/element没关系，当页面的form表单里只有一个input输入框时，回车会submit提交表单操作，这是一个默认事件。
+
+F(fix)
+
+- 在el-form上添加 ` @submit.native.prevent ` 阻止默认行为，native用于绑定原生dom
+- 原生html就在submit事件中event.preventDefault()，与上同理
+
+## 浏览器兼容相关
+
+### input在firefox下边框变红
+
+R
+
+```
+<input type="number" min="1" max="0">
+```
+input 的min 与 max值冲突了，ff下会默认加红色的box-shadow；
+
+F
+
+- 改max min 值
+- box-shadow：none

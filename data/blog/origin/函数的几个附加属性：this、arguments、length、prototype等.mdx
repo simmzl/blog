@@ -1,0 +1,150 @@
+---
+title: 函数的几个附加属性：this、arguments、length、prototype等
+date: '2017-10-03T23:23:40.000Z'
+tags:
+  - js
+  - 蝴蝶书
+  - javascript
+draft: false
+summary: ''
+---
+
+在《JavaScript语言精粹》（蝴蝶书）中讲到函数除了声明定义的参数外，每个函数都接受两个附加的参数：this 和 arguments 。
+
+# 其中this有四个调用模式：
+
+this指向取决于谁调用它，谁调用指向谁。
+
+- 方法调用模式
+- 函数调用模式
+- 构造器调用模式
+- apply调用模式
+
+
+
+## 方法调用模式
+
+一个函数被保存为对象的一个属性时，称该函数为一个方法，此时this指向该对象，通过this去访问该对象的属性，取值或者修改；
+
+```javascript
+var myObj = {
+    value : 0,
+    test : function () {
+        console.log(this.value +=1);
+    }
+}
+myObj.test() //1
+```
+
+## 函数调用模式
+
+当一个函数不是一个对象的属性时，而是单独存在时，那么它被当作一个函数调用，此时函数内部的this指向全局对象；
+
+```javascript
+var value = 1;//全局变量
+var test = function () {
+    var value = 2; //私有变量
+    console.log(this.value );//1
+    console.log(value );//2
+}
+test();
+```
+
+假如该函数是一个函数的内部函数，那么其this应绑定其外部函数的this变量，即和外部this的指向相同，但是js并不是这样，这也是js设计的缺陷之一；在inner()中，this指向了全局对象，而不是指向了myObj;
+
+```javascript
+var value = 1;//全局变量
+var myObj = {
+    value : 0,
+    test : function () {
+        console.log(this.value);//0
+        var inner = function() {
+            console.log(this.value);//1
+            console.log(value);//1
+        }
+        inner();
+    }
+}
+myObj.test();
+```
+
+解决方法：在外部函数test中定义一个变量，赋值为this;
+
+```javascript
+test : function () {
+    console.log(this.value);//0
+
+    var that = this;
+
+    var inner = function() {
+        console.log(that.value);//0
+        console.log(value);//1
+    }
+    inner();
+}
+```
+
+## 构造器调用模式
+
+```javascript
+var Person = function (str,num) {
+    this.name = str;
+    this.age = num;
+}
+Person.prototype.getName = function() {
+    console.log(this.name);
+}
+var me = new Person("simmzl",21);
+me.getName();//simmzl
+```
+
+**通过构造函数实例化一个新的对象时，构造函数中this会随之绑定到该新对象；**
+
+## Apply 调用模式
+
+每个函数都有call()和apply()方法
+
+```javascript
+obj.call(thisObj, arg1, arg2, ...);
+obj.apply(thisObj, [arg1, arg2, ...]);
+```
+
+两者作用一致，都是把obj(即**this**)绑定到thisObj，这时候thisObj具备了obj的属性和方法。或者说thisObj『继承』了obj的属性和方法。
+
+```javascript
+function Cat() {
+    this.food="fish";
+}
+Cat.prototype.say = function() {
+    alert("I love "+this.food);
+}
+
+function Dog() {
+    this.food="bone";
+}
+
+var blackCat = new Cat;
+blackCat.say();//I love fish
+var whiteDog = new Dog();
+//whiteDog 并没有定义say(),可使用apply或者call使whiteDog能够调用blackCat的say()
+blackCat.say.apply(whiteDog);//I love bone
+```
+
+# arguments
+
+它是一个**类数组**，有length的属性和index下标，没有数组的方法。
+关于类数组以及如何利用call()、apply()使用数组方法等，可以看之前的文章：[做了动物的战争web小游戏之后的总结](http://blog.simmzl.cn/2017/08/做了动物的战争web小游戏之后的总结.html)
+
+# length & name
+
+函数形参的数量
+
+```js
+const a = (b, c, d) => console.log(b);
+a.length; // 3
+a.name; // "a"
+```
+
+# prototype
+
+该函数的原型

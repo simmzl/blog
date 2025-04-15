@@ -1,0 +1,158 @@
+---
+title: About SCSS
+date: '2019-09-17T12:01:16.000Z'
+tags:
+  - css
+  - scss
+draft: false
+summary: ''
+---
+
+Something about scss.
+
+
+
+## 语法格式 (Syntax)
+
+Sass 有两种语法格式。
+
+- SCSS (Sassy CSS) 这种格式仅在 CSS3 语法的基础上进行拓展，所有 CSS3 语法在 SCSS 中都是通用的，同时加入 Sass 的特色功能。此外，SCSS 也支持大多数 CSS hacks 写法以及浏览器前缀写法 (vendor-specific syntax)，以及早期的 IE 滤镜写法。文件名为 **.scss**。
+
+- 最早的 Sass 语法格式，被称为缩进格式 (Indented Sass) 简称 "Sass"，是一种简化格式。它**使用 “缩进” 代替 “花括号” 表示属性属于某个选择器，用 “换行” 代替 “分号” 分隔属性**，很多人认为这样做比 SCSS 更容易阅读，书写也更快速。缩进格式也可以使用 Sass 的全部功能，只是与 SCSS 相比个别地方采取了不同的表达方式，文件名为 **.scss**。
+
+## 条件
+
+### @if @else
+
+```scss
+
+$boolean: true !default;
+ 
+@mixin simple-mixin {
+  @if $boolean {
+    display: block;
+  }
+  @else {
+    display: none;
+  }
+}
+ 
+.some-selector {
+  @include simple-mixin;
+}
+
+```
+
+## 循环
+
+### @for
+
+同for循环
+
+```scss
+
+// 0、1、2、3
+@for $i from 0 through 3 {
+  .test-#{$i} {
+    animation: bounce-in .5s ease-in-out #{$i * .1}s;
+  }
+
+  .temp-#{$i} {
+    width: 100px * $i;
+  }
+}
+
+// 0、1、2
+@for $i from 0 to 3 {
+
+}
+
+```
+
+### @each
+
+用于循环数组:
+
+```scss
+@each $var in <list>
+```
+
+```scss
+
+$list: adam john wynn mason kuroir;
+ 
+@mixin author-images {
+  @each $author in $list {
+    .photo-#{$author} {
+        background: url("/images/avatars/#{$author}.png") no-repeat;
+    }
+  }
+}
+
+.author-bio {
+  @include author-images;
+}
+
+```
+
+### @while
+
+```scss
+
+$types: 4;
+$type-width: 20px;
+ 
+@while $types > 0 {
+  .while-#{$types} {
+    width: $type-width + $types;
+  }
+  $types: $types - 1;
+}
+
+```
+
+### sass-loader
+
+#### scss文件
+
+在webpack中处理scss文件需要配置sass-loader：
+
+```js
+{
+  loader: 'sass-loader',
+  options: {
+    outputStyle: 'expanded'
+  }
+}
+```
+
+outputStyle为scss转css时的输出格式，具体解释可看：[sass文档](https://www.sass.hk/docs/)
+
+如果不配置该项，sass-loader会默认`outputStyle="compressed"`：
+
+```js
+// sass-loader/lib/normalizeOptions.js
+
+// opt.outputStyle
+if (!options.outputStyle && loaderContext.minimize) {
+  options.outputStyle = "compressed"; // 压缩
+}
+```
+
+这会导致一个**问题**，在使用px2rem时，有时会使用 `/*px*/` `/*no*/`这样的注释，`outputStyle = "compressed"`压缩会删除注释。
+因此配置`outputStyle: 'expanded'`可以解决这个问题。相关的blog有[webpack 中 postcss-px2rem 生产环境中注释失效](https://github.com/neilgao000/blog/issues/15)。
+sass-loader就让它只负责转scss文件，压缩的事情就交给webpack其他专业的压缩工具。
+
+#### sass文件
+
+另外，在处理`.sass`文件时，需配置`indentedSyntax: true`，声明处理的是`sass文件`
+
+```js
+{
+  loader: 'sass-loader',
+  options: {
+    indentedSyntax: true,
+    outputStyle: 'expanded'
+  }
+}
+```

@@ -1,0 +1,1048 @@
+---
+title: Some tips for FE
+date: '2019-07-11T18:50:38.000Z'
+tags:
+  - 面试
+  - notes
+draft: false
+summary: ''
+---
+
+一些面试的总结。
+
+
+
+# js
+
+## this
+传统：谁调用指向谁
+箭头函数：默认指向在定义它时,它所处的对象,而不是执行时的对象
+
+https://juejin.im/post/5c049e6de51d45471745eb98
+
+this的四个调用模式（js语言精粹）：
+
+- 方法调用模式（一个函数作为一个对象的属性，这个函数内的this指向这个对象）
+- 函数调用模式 （一个函数不是对象的属性，直接定义在全局，这个函数内的this指向全局，浏览器下的window、global）
+- 构造器调用模式 （通过构造器去new 一个实例，构造函数的this会绑定到这个实例）
+- apply调用模式 （通过可以apply、call、bind可以改变this的指向）
+
+
+
+## call, bind, apply实现原理及区别
+
+- apply、call、bind 三者都是函数的一个方法，第一个参数都是 this 要指向的对象，也就是想指定的上下文；
+
+- apply、call、bind 三者都可以利用后续参数传参，其中只有**apply()后续参数以数组**形式传；
+
+- bind 是返回对应的绑定函数，便于稍后调用；apply、call 则是立即调用。
+
+```js
+const parent = {
+    age: 30,
+    // 注意在用apply等时，这里不能用箭头函数，箭头定义时this已经指定，无法被apply等改变
+    run: function(name) { console.log(this.age, name) }
+};
+const child = {
+    age: 1
+};
+
+parent.run.apply(child, ["tom"]); // 1 tom // 立即执行
+parent.run.call(child, "tom"); // 1 tom // 立即执行
+parent.run.apply(null); // undefined undefined // null 是window下的，表示this指向window
+parent.run.apply(undefined); // undefined undefined // undefined 指向window
+
+const fn = parent.run.bind(child, "tom"); // bind会返回一个函数
+fn(); // 1 tom
+```
+
+### call & apply实现原理
+
+可以看看这个[JavaScript深入之call和apply的模拟实现](https://segmentfault.com/a/1190000009257663)
+
+fn.apply(obj, array)实现的原理：
+
+- 将要执行的函数fn设置为该对象obj的属性
+- 执行obj.fn(args)函数
+- 不能给这个obj对象新增新的属性，所以要删除这个属性；
+- 其中对obj要做判断，为**null或undefined**时，要把this指向window
+
+```js
+Function.prototype.call = function (context) {
+
+    // 首先判断是不是函数调用该方法，如果不是，则抛出异常
+    if (typeof this !== "function") throw new TypeError('Error');
+
+    // 为**null或undefined**时，要把this指向window
+    var context = context || window;
+
+    // 将函数设置为obj的属性
+    context.fn = this;
+
+    // 类数组解构参数
+    var args = [...arguments].slice(1);
+
+    // 执行函数
+    var result = context.fn(...args);
+
+    // 删除函数
+    delete context.fn;
+
+    // 返回执行结果
+    return result;
+}
+
+// apply与call不同只在于参数处理不用
+Function.prototype.apply = function (context, args) {
+
+    // 首先判断是不是函数调用该方法，如果不是，则抛出异常
+    if (typeof this !== "function") throw new TypeError('Error');
+
+    // 为**null或undefined**时，要把this指向window
+    var context = context || window;
+
+    // 将函数设置为obj的属性
+    context.fn = this;
+
+    // 执行函数
+    var result;
+    if (args) {
+        result = context.fn(...args);
+    } else {
+        result = context.fn();
+    }
+
+    // 删除函数
+    delete context.fn;
+
+    // 返回执行结果
+    return result;
+}
+```
+
+### bind实现原理
+
+bind其实是在call、apply基础上封装了一层，因此多次调用bind，只会第一次生效；
+
+```js
+parent.run.bind(child, "tom").bind(child1, "jack").bind(child2, "Rachael")();
+// 1 tom 
+// 并不会继续下去
+```
+
+**简单的实现：**
+实际要复杂一些
+```js
+Function.prototype.myBind = function (context) {
+
+    // 首先判断是不是函数调用该方法，如果不是，则抛出异常
+    if (typeof this !== "function") throw new TypeError('Error');
+
+    var me = this;
+
+    // 去掉第一个函数参数
+    var args = [...arguments].slice(1);
+    // var args = Array.prototype.slice(arguments, 1);
+
+    return function () {
+        // 把后面的执行函数的参数拼接到bing参数后
+        return me.apply(context, args.concat(...arguments);
+        // return me.apply(context, args.concat(Array.prototype.slice(arguments));
+    }
+}
+```
+
+## event loop
+macrotask & microtask
+
+js如何处理异步函数？
+
+Event Loop即事件循环，是指浏览器或Node的一种解决javaScript**单线程**运行时不会阻塞的一种机制，也就是我们经常使用异步的原理。
+
+### 执行栈
+
+堆heap：程序运行时的动态内存；**js中堆存放object数据**
+栈stack：一个数据集合，比如一堆牌（垂直堆叠），先进后出；js中栈存放**基础数据类型**和**函数执行的运行空间**；**同步任务在此处**
+队列：一个数据集合，像是一个流水线，先进先出。
+链表：一个数据集合，每个元素都是一个对象节点，包含了数据和下一个节点的指针，每个节点相连，就成了链表。
+
+event loop使得js会先执行栈内存中的同步任务，只有当同步任务执行完毕后，才去执行任务对列中的异步任务；
+
+```js
+console.log(1);
+setTimeout(() => {
+    console.log(2);    
+}, 0);
+console.log(3);
+// 1 3 2
+```
+
+### 微任务与宏任务
+
+```js
+console.log(1)
+
+setTimeout(() => {
+    console.log(2)
+}, 0)
+
+Promise.resolve().then(() => {
+    console.log(3)
+})
+
+// 1 3 2
+```
+
+这是因为 异步任务 分为 微任务(microtask) 和 宏任务(macrotask)，执行的顺序是 执行**栈中的同步代码 => 微任务 => 宏任务**。
+
+#### 微任务
+
+**promise是微任务。**
+
+当执行栈中的代码执行完后，会先执行微任务对列，只有当微任务对列中所有任务执行完了，才会执行宏任务。
+
+#### 宏任务
+
+**setTimeout setInterval setImmediate(IE专用)等**
+
+等执行栈和微任务都执行完了，才来执行宏任务对列，且每个宏任务执行完了都要看一下微任务对列有没有新增任务，有就执行微任务，清空微任务对列后才开始回来执行宏任务。
+
+```js
+setTimeout(() => {
+    console.log('timeout1')
+    Promise.resolve().then(() => {
+        console.log('promise1')
+    })
+    Promise.resolve().then(() => {
+        console.log('promise2')
+    })
+}, 100)
+
+setTimeout(() => {
+    console.log('timeout2')
+    Promise.resolve().then(() => {
+        console.log('promise3')
+    })
+}, 200)
+```
+
+解析： 
+
+1、先将两个setTimeout压入异步对列中的宏任务对列；
+2、宏任务对列中时间到了先执行第一个setTimeout，打印timeout1。之后发现两个promise，压入微任务。
+3、第一个setTimeout执行完毕，去看微任务对列，发现有两个微任务。先进先出，执行第一个promise：打印p1，之后p2;
+4、微任务清空后，执行宏任务，打印t2，发现一个微任务并压入微任务对列中；
+5、第二个setTimeout执行完毕，去看微任务对列，发现有一个微任务。执行，打印p3；
+
+所以最后输出： t1 p1 p2 t2 p3
+
+## 变量提升
+## 捕获和冒泡
+捕获是false
+## 高阶函数
+接受和或返回另一个函数称为高阶函数
+## 闭包、原型链、垃圾回收机制、JS如何实现继承
+
+[关于闭包](https://blog.simmzl.cn/2017/09/%E8%AE%A9%E4%BA%BA%E5%A4%B4%E5%A4%A7%E7%9A%84%E9%97%AD%E5%8C%85%E5%92%8C%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6GC.html)
+
+**实例的__proto__属性（原型）等于其构造函数的prototype属性**
+
+实例p的构造函数为Person，而Person的构造函数为Function
+
+手动实现继承：Child.prototype = new Parent();
+
+prototype是函数的一个属性（每个函数都有一个prototype属性），这个属性是一个指针，指向一个对象。它是显示修改对象的原型的属性。
+
+
+1、Object是作为众多new出来的实例的基类   `function Object(){ [ native code ] }`
+2、Function是作为众多function出来的函数的基类    `function Function(){ [ native code ] }`
+3、构造函数的proto(包括Function.prototype和Object.prototype)都指向Function.prototype
+4、原型对象的proto都指向Object.prototype
+5、Object.prototype.proto指向null
+
+
+```js
+var foo = {},
+    F = function(){};
+Object.prototype.a = 'value a';
+Function.prototype.b = 'value b';
+
+console.log(foo.a) // a
+console.log(foo.b) //undefined
+console.log(F.a) // a
+console.log(F.b) // b
+```
+## ES6
+
+### 新特性
+
+let const => class 对象解构赋值 async/await 函数的默认参数值 for...of Promise
+
+[Promise对象-异步编程解决方案](https://blog.simmzl.cn/2017/11/Promise%E5%AF%B9%E8%B1%A1-%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88.html)
+
+[吃了这口ES6/7语法糖](https://blog.simmzl.cn/2018/03/%E5%90%83%E4%BA%86%E8%BF%99%E5%8F%A3ES67%E8%AF%AD%E6%B3%95%E7%B3%96.html)
+
+### Generator
+
+### 箭头函数和普通函数的区别，有什么新特性
+
+1、简写
+2、es5的函数中this的指向（上下文）取决于谁调用他，而箭头函数的中this的指向在声明时就已经固定；
+
+```js
+var a = {
+	aa: 1,
+	bb: function () {
+		function cc () { console.log(this) };
+		cc();
+	}
+};
+a.bb(); // Window
+```
+
+```js
+var a = {
+	aa: 1,
+	bb: function () {
+		const cc = () => console.log(this);
+		cc();
+	}
+};
+a.bb(); // a
+```
+
+
+http://es6.ruanyifeng.com/#docs/generator
+## for...in迭代和for...of有什么区别， forEach
+https://www.jianshu.com/p/c43f418d6bf0
+
+### for...in
+
+- 用于对象或数组
+- **遍历自有的、继承的、可枚举的、非Symbol的属性**，包括原型上的，所以需要配合`Object.prototype.hasOwnProperty(propname)`
+- **遍历是无序的**，视浏览器而定，故在**遍历数组时很可能是乱序的**，所以不建议用于遍历数组，推荐`for of`
+- 上面讲到无序，其返回的顺序和Object.keys()、Object.values()的顺序一致；
+
+```js
+var obj = {
+    a: 1,
+    b: 2
+};
+for (let o in obj) {
+    if (o === "a") {
+        console.log(o); // a
+        break;
+    }
+}
+
+if(arr.hasOwnProperty(i)){ 
+	console.log(arr[i]);
+}
+```
+
+### for...of
+
+可迭代对象（包括 Array，Map，Set，String，TypedArray，arguments 对象等等）上创建一个迭代循环。
+
+break, throw  continue    或return终止
+
+```js
+// 只能用于数组
+var arr = [1, 2, 3, 4];
+for (let o of arr) {
+    console.log(o); // 1
+    if (o === 1) break;
+}
+```
+
+### forEach
+
+不能使用break、continue和return语句
+
+## DOM0和DOM2事件绑定
+
+### DOM0级绑定： 
+
+把一些常用的事件直接挂载在DOM的私有属性上，成为DOM0事件绑定：
+
+`target.onclick = function () {}`
+
+
+### DOM2级绑定
+
+`target.addEventListener("fn name", fn, true/fasle)`
+
+DOM2级规定事件分为三个阶段：
+
+- 捕获阶段
+- 处于目标阶段
+- 冒泡阶段
+
+![mark](https://static.simmzl.cn/dom2.png)
+
+通过true/false，我们可以设定事件在捕获的阶段触发还是冒泡阶段的时候触发。
+
+- true：捕获阶段时候触发
+- false： 冒泡阶段触发
+
+## 构造函数
+
+构造函数不需要显示的返回值。使用new来创建对象(调用构造函数)时，如果return的是非对象(数字、字符串、布尔类型等)会忽而略返回值;
+如果return的是对象，则返回该对象(注：若return null也会忽略返回值）。
+
+```js
+function Person(name) {
+    this.name = name
+    return {}
+    // return name // 忽略 {name: 'Tom'}
+}
+let p = new Person('Tom'); // {}
+```
+
+## 严格模式
+
+`use strict`
+
+## 输入url到渲染的整个过程
+
+dns解析流程
+
+### DOM & CSSOM => Render Tree
+
+- url DNS查询到IP
+- 从IP下载资源 80 443
+
+- 浏览器将资源根据编码格式转成对应字符，再根据HTML5标准解析成对应标签对象。
+- 根据这些对象去进行深度遍历，获取到它整个的**DOM**；（parse html）
+- 在遍历遇到head中的link标签时，浏览器会下载这个资源，并解析，解析过程和解析html文件一样。最终生成一个**CSS对象模型：CSSOM**。
+
+- 之后，浏览器会将DOM、CSSOM结合起来，构建**渲染树 Render-tree**，接下来是构建渲染树的过程：
+
+  - **遍历DOM**每一个可见的节点（visibility:hidden只是视觉不可见但仍占位置，所以会遍历），一些script、display:none节点会忽略；
+  - 为每个可见的节点匹配对应的CSSOM的规则；
+  - 生成**具有内容、样式的可见渲染树**；
+
+接下来进行**layout布局，即reflow重排**，计算位置和大小。
+
+- 浏览器**从渲染树的根节点开始遍历**，计算每个对象的位置、大小、形状，输出盒子模型，所有单位都转化为屏幕上的绝对像素px。
+
+最后，万事俱备，**开始painting**！我们就在viewport上看到了网页。
+
+### 脚本的执行
+
+当浏览器解析html遇到`<script>`标签时，DOM构建会暂停，直到脚本执行完毕。
+
+因为解析器不知道js会对DOM做啥，所有会让js引擎编译执行脚本，直到脚本执行完毕后再继续构建DOM。所以，默认情况下，js一定会阻塞DOM构建的。
+
+所以我们最后**把script脚本放在`</body>`以将脚本的阻塞降到最低**。
+
+在一些对DOM无操作的脚本上，我们可以异步加载脚本：在`<script>`上添加`async`关键字，告诉浏览器请继续构建DOM，异步的在脚本准备就绪后再执行脚本，不考虑脚本的依赖。比如谷歌分析、百度分析。
+
+加`defer`关键字时，告诉浏览器，script加载和构建DOM是异步的，但script在DOM解析完毕，DOMContentLoaded事件触发前执行。这一点，和async不同。
+
+![async&defer](https://static.simmzl.cn/blog/2019-07-23-async%26defer.png)
+
+加defer的script标签有顺序，async无顺序。
+dom构建完成，然后defer的脚本执行完后，触发DOMContentLoaded事件。
+
+async脚本执行阶段可能DOMContentLoaded已经触发了。但是其执行完毕一定是在load之前的。
+
+**动态添加脚本，其默认是async的**
+
+讲解相当相当之好的文章：[四步带你吃透浏览器渲染基本原理](https://mp.weixin.qq.com/s/PNJ7xCTh15vtdFHWlDk5gw)
+
+## 缓存
+
+[cookie/localStroage/sessionStroage/indexDB/webSQL简略总结](https://blog.simmzl.cn/2018/08/cookie-localStroage-sessionStroage-indexDB-webSQL%E7%AE%80%E7%95%A5%E6%80%BB%E7%BB%93.html)
+
+## window的onload事件和domcontentloaded谁先谁后
+
+## 数组扁平化、去重
+
+扁平：
+```js
+const flatten = arr => {
+    return arr.reduce((prev,item) => {
+        return prev.concat(Array.isArray(item) ? flatten(item) : item);
+    }, []);
+}
+flatten([[1, 2, 2], [3, 4, 5, 5], [6, 7, 8, 9, [11, 12, [12, 13, [14]]]], 10]);
+
+const flatten = arr => {
+    while (arr.some()) {
+
+    }
+}
+```
+
+## typeof和instanceof的区别
+
+它返回值是一个字符串，该字符串说明运算数的类型。（typeof 运算符返回一个用来表示表达式的数据类型的字符串。
+
+instanceof是判断其构造函数的。
+
+[区别](https://www.cnblogs.com/Trr-984688199/p/6180040.html)
+
+## new和instanceof的内部机制
+
+https://juejin.im/post/5c19c1b6e51d451d1e06c163
+
+## vue
+
+### 实现原理
+
+vue的响应式原理
+
+### virtual dom有哪些好处
+
+### 父子组建传值/跨组建传值
+
+父 - 子： props
+子 - 父： emit
+
+跨组件： eventbus & vuex
+
+### vuex
+
+[vuex](https://blog.simmzl.cn/2019/06/Vuex&Redux-Vuex.html)
+
+### vue的nextTick实现原理以及应用场景
+
+Vue 在更新 DOM 时是异步执行的。只要侦听到数据变化，Vue 将开启一个队列，并缓冲在同一事件循环中发生的所有数据变更。
+
+如果同一个 watcher 被多次触发，只会被推入到队列中一次。
+
+避免不必要的计算和 DOM 操作。
+
+**下一个的事件循环“tick”中，Vue 刷新队列并执行实际 (已去重的) 工作**，这时候DOM的数据才改变完毕。Vue 在内部对异步队列尝试使用原生的 Promise.then、MutationObserver 和 setImmediate，如果执行环境不支持，则会采用 setTimeout(fn, 0) 代替。
+
+正常都还好，但是如果**你在更新数据后，想基于更新后的 DOM 状态来做点什么**，这个时候你从DOM那边拿到的数据很可能是未改变的值。
+
+```js
+var vm = new Vue({
+  el: '#example',
+  data: {
+    message: '123'
+  }
+})
+vm.message = 'new message' // 更改数据
+vm.$el.textContent === 'new message' // false // 数据未改变
+Vue.nextTick(function () {
+  vm.$el.textContent === 'new message' // true // 数据已改变
+})
+```
+
+$nextTick() 返回一个 Promise 对象，因此还可以这样：
+
+```js
+methods: {
+  updateMessage: async function () {
+    this.message = '已更新'
+    console.log(this.$el.textContent) // => '未更新'
+    await this.$nextTick()
+    console.log(this.$el.textContent) // => '已更新'
+  }
+}
+```
+
+### SSR对性能优化的提升在哪里
+
+### Vue3 proxy解决了哪些问题
+
+# html & css
+
+1
+
+## 清除浮动
+
+## REM和EM
+
+rem 1px 像素解决方案
+
+物理像素 / 逻辑像素 = dpr (devicePixelRatio)卡，通过window.devicePixelRatio获取。
+
+UI设计师**要求的1px是指设备的物理像素1px**，而CSS里记录的像素是逻辑像素。
+在dpr = 2 的设备上，1px就表现为两个物理像素，就显得非常粗。
+
+
+1、background & svg 圆角不适用
+
+postcss-write-svg插件
+
+写好方法，传入px、border的位置（left、top、color）
+
+2、1px不转rem, 用transform缩放0.5 圆角情况下用
+
+```less
+.setLeftLine(@c: #C7C7C7) {
+    content: " ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px; /*!no*/
+    bottom: 0;
+    border-left: 1px solid @c; /*!no*/
+    color: @c;
+    transform-origin: 0 0;
+    transform: scaleX(0.5);
+}
+
+.setLine(@c: #C7C7C7) {
+    content: " ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 200%;
+    border: 1px solid @c;
+    color: @c;
+    height: 200%;
+    transform-origin: left top;
+    transform: scale(0.5);
+}
+```
+动态的改变viewport的缩放比例和rem根字体大小以及媒体查询之类因为兼容性问题和涉及全局可能会带来其他影响就没有考虑。
+
+## BFC什么是什么情况下bfc
+
+### 定义
+
+块格式化上下文 (Block Formatting Context)
+
+BFC就是页面上的一个隔离的独立容器，容器里面的子元素的属性不会影响到外面元素，只在这个BFC内；两个BFC之间不会产生任何影响
+
+### 如何产生BFC
+
+下面情况会产生BFC：
+
+- float的值不为none
+- overflow的值不为visible
+- display的值为table-cell, table-caption, inline-block中的任何一个
+- position的值不为relative和static
+
+简单说，就是CSS3触发BFC就是让定位不是正常的，不是static、relative。
+
+### 特性
+
+- 内部的Box会在垂直方向上一个接一个的放置
+- 完整的说法是：属于同一个BFC的两个相邻Box的margin会发生重叠（塌陷），与方向无关。）
+- 每个元素的左外边距与包含块的左边界相接触，BFC中子元素不会超出他的包含块，而position为absolute的元素可以超出他的包含块边界
+- BFC的区域不会与float的元素区域重叠，所以为了让浮动子元素不与外界重叠，我们就可以用这个特性来实现清楚浮动了。
+- 计算BFC的高度时，浮动子元素也参与计算，同样，可以解决父级高度塌陷的问题。
+- BFC就是页面上的一个隔离的独立容器，容器里面的子元素不会影响到外面元素，反之亦然
+
+看到以上的几条约束，想想我们学习css时的几条规则
+
+Block元素会扩展到与父元素同宽，所以block元素会垂直排列
+垂直方向上的两个相邻DIV的margin会重叠，而水平方向不会(此规则并不完全正确)
+浮动元素会尽量接近往左上方（或右上方）
+为父元素设置overflow：hidden或浮动父元素等，则会包含浮动元素
+
+### 用途
+
+1、 比如说两个元素发生margin重叠，我们让他们其中一个元素a 的display为inline-block，或者a浮动，这时候a就是一个BFC，这样他就不会和另一个元素发生作用。
+
+在发生margin重叠的时候（只要上下相邻，中间没有其他元素，如兄弟之间、父子的上面或下面等，margin重叠只发生在垂直方向。），使用：
+
+- padding代替
+- 之一display: inline-block  // 产生BFC
+- 之一设置重叠的元素浮动  // 产生BFC
+- 给其中一个元素包个父级div，并设置overflow: hidden / display: inline-block，这样这个父级就是一个BFC，不会影响
+
+2、清除内部浮动
+
+计算BFC的高度时，浮动元素也参与计算，因此可设置父级元素overflow/display/float/position达到目的。
+
+3、BFC布局规则第五条：
+
+BFC就是页面上的一个隔离的独立容器，容器里面的子元素不会影响到外面的元素。反之也如此。
+
+因为BFC内部的元素和外部的元素绝对不会互相影响，因此，
+
+当BFC外部存在浮动时，它不应该影响BFC内部Box的布局，BFC会通过变窄，而不与浮动有重叠。 同样的，当BFC内部有浮动时，为了不影响外部元素的布局，BFC计算高度时会包括浮动的高度。 避免margin重叠也是这样的一个道理。 
+
+## css
+
+### 贝塞尔曲线
+
+### 选择器相关，优先级
+
+![选择器](https://static.simmzl.cn/blog/2019-07-24-css.png)
+
+[](https://blog.csdn.net/konghouy/article/details/80875641)
+
+### css动画实现
+
+[css动画](http://www.w3school.com.cn/css3/css3_animation.asp)
+
+animation
+
+关键帧 @keyframe
+
+## 回流 & 重回
+
+回流（reflow）
+只要修改了dom或改变了元素的形状或大小等会改变布局的操作就会触发reflow
+
+重绘（repaint）
+只是改变了颜色，不影响周围元素或布局，会引起浏览器的重绘
+
+减少reflow与repaint
+不要一条一条的修改样式，应该固定写一个class，更换className，减少reflow次数
+
+不要把 DOM 结点的属性值放在一个循环里当成循环里的变量。
+
+为动画的 HTML 元件使用position:fixed 或 absolute ，那么修改他们的 CSS 是不会 reflow 的。
+
+避免使用table布局，一个很小的改动会造成整个table reflow！
+
+
+# 计算机网络
+
+## https和http
+
+Http请求中的keep-alive有了解吗
+
+[HTTP和HTTPS协议，看一篇就够了](https://blog.csdn.net/xiaoming100001/article/details/81109617)
+
+## 状态码
+
+[常见的http状态码](https://www.cnblogs.com/xflonga/p/9368993.html)
+[文档](https://www.runoob.com/http/http-status-codes.html)
+
+1XX系列响应代码仅在与HTTP服务器沟通时使用。
+100("Continue")
+
+2XX系列响应代码表明操作成功了。
+200("OK")
+201("Created")服务器依照客户端的请求创建了一个新资源时，发送此响应代码
+204("No Content")
+
+3XX 重定向
+3XX系列响应代码表明：客户端需要做些额外工作才能得到所需要的资源。它们通常用于GET请求。他们通常告诉客户端需要向另一个URI发送GET请求，才能得到所需的表示。那个URI就包含在Location响应报头里。
+304("Not Modified")
+
+4XX客户端错误
+401("Unauthorized")
+403("Forbidden")
+405("Method Not Allowd")
+408("Reqeust Timeout")
+
+5XX服务器错误
+
+502("Bad Gateway")  只有HTTP代理会发送这个响应代码。它表明代理方面出现问题，或者代理与上行服务器之间出现问题，而不是上行服务器本身有问题。若代理根本无法访问上行服务器，响应代码将是504。
+
+503("Service Unavailable")
+此响应代码表明HTTP服务器正常，只是下层web服务服务不能正常工作。最可能的原因是资源不足：服务器突然收到太多请求，以至于无法全部处理。由于此问题多半由客户端反复发送请求造成，因此HTTP服务器可以选择拒绝接受客户端请求而不是接受它，并发送503响应代码。
+响应报头：服务器可以通过Retry-After报头告知客户端何时可以重试。
+
+504("Gateway Timeout")
+跟502类似，只有HTTP代理会发送此响应代码。此响应代码表明代理无法连接上行服务器。
+
+## xss和csrf
+
+XSS：跨站脚本（Cross-site scripting，通常简称为XSS）是一种网站应用程序的安全漏洞攻击，是代码注入的一种。它允许恶意用户将代码注入到网页上，其他用户在观看网页时就会受到影响。这类攻击通常包含了HTML以及用户端脚本语言。
+
+**在一个论坛发帖中发布一段恶意的JavaScript代码就是脚本注入，如果这个代码内容有请求外部服务器，那么就叫做XSS！**
+
+CSRF:跨站请求伪造（英语：Cross-site request forgery），也被称为 one-click attack 或者 session riding，通常缩写为 CSRF 或者 XSRF， 是一种挟制用户在当前已登录的Web应用程序上执行非本意的操作的攻击方法。
+
+**冒充用户发起请求（在用户不知情的情况下）,完成一些违背用户意愿的请求（如恶意发帖，删帖，改密码，发邮件等）。**
+
+xss的话主要使用转义，csrf的话项目中我主要使用的是jwt(javascript web token)。然后针对jwt细节问了我20多分钟。
+
+## 对称加密与非对称加密
+
+对称：客户端用服务器的公钥加密一个随机密钥，然后加密明文，服务器拿到密文后用自己的私钥解密
+
+非对称：双方都有公钥私钥，公钥由可信任的第三方维护，都可以获取到。客户端用服务端的公钥加密明文，然后服务器用自己的私钥解密。
+
+## 进程 & 线程
+
+进程就是一次程序执行的过程，操作系统分配资源的最小单位。
+
+线程就是程序执行的最小单位，一个进程包含多个线程。
+
+进程彼此相互独立，不共享资源内存。而线程则会。
+
+js是单线程。
+chrome每个网页都是一个独立的进程，用空间换取速度。这样一个网页崩溃不会造成所有的网页崩溃。
+
+## 跨域
+
+### CORS
+
+需要浏览器和服务器同时支持
+
+服务端开启Access-Control-Allow-Origin添加允许的域名。
+
+为 * 会造成一些安全问题，允许其他域名访问后端接口。
+为 * 会使浏览器不会携带cookies，服务端通过access-control-allow-credentials为true，去接受cookies，默认开启。客户端通过XHR的withCredentials为true让请求带cookies
+
+请求也会分为简单请求和非简单请求。
+
+简单即满足以下两点：
+
+1、get/post/head请求之一；
+2、http请求头不超出以下几个字段：
+
+- Accept
+- Accept-Language
+- Content-Language
+- Last-Event-ID
+- Content-Type：只限于三个值application/x-www-form-urlencoded、multipart/form-data、text/plain
+
+否则为非简单。
+
+非简单的话，浏览器会发送一个预检（preflight）请求，相当于想问问服务器，你支不支持我这个请求。
+
+预检请求是一个OPTINOS请求，特征是在请求头加了三个字段：
+
+- origin：本次请求的域名地址，告诉服务器，这个域名你支不支持～
+- Access-Control-Allow-Method：POST，正式请求的方法，问一问服务器你到底支持哪些；
+- Access-Control-Request-Headers：content-type, x-requested-with；告诉服务器，正式请求会额外发送的请求头。
+
+服务器在检查Origin、Access-Control-Request-Method和Access-Control-Request-Headers字段以后，确认允许跨源请求之后返回回应。
+如果浏览器否定了"预检"请求，会返回一个正常的HTTP回应，但是没有任何CORS相关的头信息字段。会触发被XHR onerror事件捕获。
+
+若允许，则在该响应头中，会在Access-Control-Allow-Origin这个字段中带上服务器允许的地址。其中还包括：
+
+- ccess-Control-Allow-Methods: GET, POST, PUT
+- Access-Control-Allow-Headers: X-Custom-Header
+- Access-Control-Allow-Credentials: true
+- Access-Control-Max-Age: 1728000  用来指定本次预检请求的有效期。会缓存这条回应，在此期间不用发出另一条预检请求。
+
+### 图像ping
+
+利用Image对象没有同源限制的原理
+
+```js
+const img = new Image();
+
+img.onload = img.onerror = function () { console.log("done") };
+
+img.src = "https://xx?form=index"
+```
+
+常用于用户点击次数埋点、广告曝光次数等。
+
+
+
+### jsonp
+
+```html
+ <script>
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+
+    // 传参一个回调函数名给后端，方便后端返回时执行这个在前端定义的回调函数
+    script.src = 'http://www.domain2.com:8080/login?user=admin&callback=handleCallback';
+    document.head.appendChild(script);
+
+    // 回调执行函数
+    function handleCallback(res) {
+        alert(JSON.stringify(res));
+    }
+ </script>
+```
+
+服务端返回：
+
+```js
+handleCallback({"status": true, "user": "admin"})
+```
+
+### postMessage跨域
+
+HTML5
+
+用法：postMessage(data,origin)方法接受两个参数
+
+data： html5规范支持任意基本类型或可复制的对象，但部分浏览器只支持字符串，所以传参时最好用JSON.stringify()序列化。
+
+origin： 协议+主机+端口号，也可以设置为"*"，表示可以传递给任意窗口，如果要指定和当前窗口同源的话设置为"/"。
+
+1、a.html：(http://www.domain1.com/a.html)
+
+```html
+<iframe id="iframe" src="http://www.domain2.com/b.html" style="display:none;"></iframe>
+<script>       
+    var iframe = document.getElementById('iframe');
+    iframe.onload = function() {
+        var data = {
+            name: 'aym'
+        };
+        // 向domain2传送跨域数据
+        iframe.contentWindow.postMessage(JSON.stringify(data), 'http://www.domain2.com');
+    };
+
+    // 接受domain2返回数据
+    window.addEventListener('message', function(e) {
+        alert('data from domain2 ---> ' + e.data);
+    }, false);
+</script>
+```
+
+2、b.html：(http://www.domain2.com/b.html)
+
+```html
+<script>
+    // 接收domain1的数据
+    window.addEventListener('message', function(e) {
+        alert('data from domain1 ---> ' + e.data);
+
+        var data = JSON.parse(e.data);
+        if (data) {
+            data.number = 16;
+
+            // 处理后再发回domain1
+            window.parent.postMessage(JSON.stringify(data), 'http://www.domain1.com');
+        }
+    }, false);
+</script>
+```
+
+###  document.domain + iframe跨域
+
+主域名相同子域名不同，手动**设置document.domain为基本主域名**来通信（window.parent）
+
+1、父窗口：(http://www.domain.com/a.html)
+
+```html
+<iframe id="iframe" src="http://child.domain.com/b.html"></iframe>
+<script>
+    document.domain = 'domain.com';
+    var user = 'admin';
+</script>
+```
+
+2、子窗口：(http://child.domain.com/b.html)
+
+```html
+<script>
+    document.domain = 'domain.com';
+    // 获取父窗口中变量
+    alert('get js data from parent ---> ' + window.parent.user);
+</script>
+```
+
+## get post区别
+
+[w3c](http://www.w3school.com.cn/tags/html_ref_httpmethods.asp)
+
+## token session cookie
+
+[三者区别](https://www.cnblogs.com/moyand/p/9047978.html)
+
+# 高阶
+
+## Lazyman
+
+## serviceworker如何保证离线缓存资源更新
+
+## 发布订阅模式和观察者模式的异同
+
+## CI/CD整体流程
+
+## vue和react选型和比较
+
+[vue官方区别](https://cn.vuejs.org/v2/guide/comparison.html)
+
+## webpack的plugins和loaders的实现原理
+
+## webpack 热更新原理
+
+[前端开发热更新原理解读](https://www.jianshu.com/p/f4c7254f4e24)
+
+## 性能优化
+
+### 页面级别的优化
+
+#### 减少 HTTP请求数
+
+- 设置HTTP缓存
+
+一些很少变化的图片设置HTTP Header中的Expires设置一个很长的过期头
+一些变化不频繁而又可能会变的资源可以使用 Last-Modifed 来做请求验证
+
+- 资源合并与压缩
+
+多个js最终打包出来一个main.js，多个css合并。
+
+开启gzip压缩
+
+- 图片类的
+
+css雪碧图、小的png图片转base64、图片瀑布流等可以使用懒加载，压缩图片。
+
+- 资源上CDN
+
+- 脚本放在body内最后面
+
+html自上而下解析的，放在前面会阻碍html其他资源的加载。
+
+如果在加载执行脚本的时候DOM元素并没有被解析，脚本就会因为DOM元素没有生成取不到响应元素
+
+- 动态加载js、异步加载
+
+在需要js时，动态添加script脚本。
+
+使用async、defer，避免因为解析js造成阻塞DOM的构建
+
+- css放在head里面
+
+放在head中可以尽早开始加载构建CSSOM，放在后面也会推迟页面渲染时间。
+
+
+### 代码级别的优化
+
+#### js
+
+- 减少DOM操作
+
+  - 获取dom节点类数组，直接操作类数组比较耗性能，因为类数组是查询结果，每次调用都会查询一遍，转成数组再操作。
+
+  - 频繁的操作dom会造成重绘（颜色变化）和回流（改变形状大小造成布局变化）
+
+- 避免使用eval去生成变量
+
+- 尽量避免使用全局变量，能用局部变量代替就用局部变量代替.
+
+- 用户输入事件的处理函数去抖动
+
+- 比较不用操作dom，耗费性能时间长的操作，放在Web Workers中执行（Web Workers不能操作dom）
+
+#### html
+
+避免过多和过深的dom，有些是可以用伪元素代替的。dom的渲染是深度遍历的。
+
+图标可以使用iconfont代替
+
+#### css
+
+- 媒体类型（media type）和媒体查询（media query）来解除对渲染的阻塞。
+
+```html
+<link href="index.css" rel="stylesheet">
+<link href="print.css" rel="stylesheet" media="print">
+<link href="other.css" rel="stylesheet" media="(min-width: 30em) and (orientation: landscape)">
+```
+
+- 降低样式选择器的复杂度
+
+用一个类代替，避免过多的选择
+
+- 多次改变一个元素的css属性可以合并成一个类名
+
+
+# 算法
+
+## 二分
+## 冒泡
+## 冗余度
+
+## 排序算法
+
+https://juejin.im/post/5c1eec7bf265da61477034ae
+
+# 项目经历
+

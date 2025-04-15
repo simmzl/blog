@@ -1,0 +1,118 @@
+---
+title: 关于IEGet只取缓存和Http304以及Axios拦截器配置
+date: '2018-07-25T21:54:15.000Z'
+tags:
+  - js
+  - http/https
+  - bug
+  - javascript
+draft: false
+summary: ''
+---
+
+# Bug
+
+在IE 11中，页面更新数据之后重新获取列表数据时，列表并没有变化。查看Network显示刚才的请求200 OK,但是数据来自缓存(from memory cache)，响应正文依旧是之前没有变化的数据。
+这个问题在Chrome上不存在。
+
+# Why
+
+GET请求在URL和参数键值不变时，会默认读取浏览器中上一个此GET请求的响应，造成了该bug。
+HTTP 缓存机制是web性能优化的重要手段,但这里更新数据并不需要缓存。
+
+
+# Fix
+
+最稳妥的方法是在get请求中添加时间戳，使每一个请求唯一。
+添加Axios拦截器:
+
+```javascript
+Axios.interceptors.request.use(config => {
+    if (config.method === "get") {
+        // 添加时间戳参数
+        config.params = {
+            _t: +new Date(),
+            ...config.params
+        };
+    }
+    // 都可
+    // config.headers["X-Requested-With"] = +new Date();
+    // config.headers["Cache-Control"] = "no-cache";
+    // config.headers["Pragma"] = "no-cache";
+    return config;
+}, error => {
+    return Promise.reject(error);
+});
+```
+
+# More
+
+## Get与Post区别
+
+**在缓存方面，Post是不会被浏览器缓存的**
+
+|区别|GET|POST|
+|--|--|--|
+| 缓存  | 能被缓存 |  不能被缓存 |
+| 历史  | 参数保留在浏览器历史中 |  不会 |
+| 编码类型 |  application/x-www-form-urlencoded | application/x-www-form-urlencoded 或 multipart/form-data。为二进制数据使用多重编码。 |
+| 对数据长度的限制  | URL 的最大长度是 2048 个字符 | 无限制 |
+| 安全性  | 发送密码或其他敏感信息时不要使用 | 更安全，参数不会被保存在浏览器历史或 web 服务器日志中 |
+
+## Http 304 Not Modified
+
+### Last-Modified
+
+服务器在响应请求时，告诉浏览器资源的最后修改时间。
+![Last-Modified](http://static.simmzl.cn/last-modified.png)
+
+### If-Modified-Since
+
+再次请求服务器时，浏览器通过此字段通知服务器上次请求时，服务器返回的资源最后修改时间,
+服务器收到请求后发现有If-Modified-Since 则与被请求资源的最后修改时间进行比对。
+若资源的最后修改时间大于晚于If-Modified-Since，说明资源又被改动过，则响应整片资源内容，返回状态码200；
+
+若资源的最后修改时间早于等于If-Modified-Since，说明资源无新修改，则响应HTTP 304，告知浏览器继续使用所保存的cache。
+![If-Modified-Since](http://static.simmzl.cn/If-Modified-Since.png)
+
+## Axios拦截器配置
+
+**请求拦截器：**
+
+```javascript
+axios.interceptors.request.use(config => {
+    // 在发送请求之前做些什么
+    // 添加header、对参数进行处理、配置并开启全局loading等等
+    return config;
+  }, error => {
+    // 对请求错误做些什么
+    return Promise.reject(error);
+  });
+```
+
+**响应拦截器：**
+
+```javascript
+axios.interceptors.response.use(response => {
+    // 对响应数据做点什么
+    // 可以通过接口返回的参数如responseCode等判断各种情况从而弹出提示、关闭全局Loading
+
+    // 例如 1000 表示未登录，则可以将路由push到login
+    if (response.data.responseCode === "1000")  router.push({ name: "login" });
+
+    return response.data; // 直接返回data,而不必每次取data
+  }, error => {
+    // 对响应错误做点什么
+    // 可以通过接口返回的参数如responseCode等判断各种情况从而弹出提示、关闭全局Loading
+    return Promise.reject(error);
+  });
+```
+
+关于config的详细参数配置见：[Axios 中文说明 · 看云](https://www.kancloud.cn/yunye/axios/234845)
+
+# Last
+
+参考：[彻底弄懂HTTP缓存机制及原理](https://www.cnblogs.com/chenqf/p/6386163.html)
+[HTTP请求中浏览器的缓存机制](https://www.cnblogs.com/xuan52rock/p/4885282.html)
+[HTTP 方法：GET 对比 POST](http://www.w3school.com.cn/tags/html_ref_httpmethods.asp)
+[IE 浏览器 GET 请求缓存问题](https://blog.csdn.net/xiaoping0915/article/details/79145234)

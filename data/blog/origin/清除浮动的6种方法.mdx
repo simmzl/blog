@@ -1,0 +1,63 @@
+---
+title: 清除浮动的6种方法
+date: '2017-09-01T12:16:12.000Z'
+tags:
+  - css
+draft: false
+summary: ''
+---
+
+
+看到一些清除浮动的方法，自己试了一遍之后的总结。
+
+HTML：
+
+```html
+<div class="div1">
+    <div style="float:left">Left</div>
+    <div style="float:right">Right</div>
+</div>
+<div class="div2">
+    div2
+</div>
+```
+
+
+
+- 父级div1定义伪类:after。有点麻烦，代码多，很多网站使用，跟`<div style="clear:both"></div>`很相似;
+
+```css
+.div1:after{
+    content:"";
+    display:block;
+    clear:both;
+    /*更严谨的加上下面两行*/
+    visibility:hidden;
+    height:0;
+}
+```
+
+- 结尾处加空div标签clear:both，或者br标签。
+
+```html
+<div class="div1">
+    <div class="left">Left</div>
+    <div class="right">Right</div>
+    <div style="clear:both"></div>
+    <!--或者：<br>-->
+</div>
+```
+
+- 父级div也浮动，需要定义宽度。都浮动的话容易出现新问题，不推荐使用。
+
+- 父级div定义 display:table，不推荐。
+
+- 父级div定义 overflow：auto/hidden
+
+```css
+.div1 {
+    overflow:auto/hidden;
+}
+```
+
+- 父级div定义 height。

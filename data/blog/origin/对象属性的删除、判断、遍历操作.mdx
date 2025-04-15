@@ -1,0 +1,66 @@
+---
+title: 对象属性的删除、判断、遍历操作
+date: '2017-10-11T23:19:20.000Z'
+tags:
+  - js
+  - js启示录
+  - javascript
+draft: false
+summary: ''
+---
+
+> 最近在读《JavaScript Enlightenment》（JavaScript启示录）
+
+
+
+## 使用delete删除一个属性
+
+```javascript
+let a = {
+    age:00,
+    gender:'male'
+}
+delete a.age;
+```
+
+delete是将对象属性删除的唯一的方法，将对象属性设为undefined或null只会改变属性的值，并不会删除。
+
+## 使用in操作符检查一个对象是否包含给定属性
+
+根据原型链的概念，即使一个空对象，其内部属性也继承了Object.prototype的属性。**Object.prototype是原型链的最顶级。**
+
+```javascript
+let test0 = {name:'tom'};
+//这里的name要加引号
+console.log('name' in test0);//true
+console.log('toString' in test0);//输出true,继承了原型链上的Object.prototype的属性
+```
+
+## 使用hasOwnProperty()检查对象属性是否来自原型链
+
+```javascript
+let test1 = {name:'jack'}
+console.log(test1.hasOwnProperty('name'));//输出true
+console.log('toString' in test1);//输出true,原型链上的Object.prototype的属性
+console.log(test1.hasOwnProperty('toString'));//输出false
+```
+
+## 使用for-in和hasOwnProperty()循环枚举对象的属性
+
+```javascript
+let test2 = {
+    age:00,
+    gender:'male'
+}
+for(let key in test2){
+    //使用hasOwnProperty()判断是否是来自原型链的属性
+    if(test2.hasOwnProperty(key)){
+        console.log(key);//属性
+        console.log(test2[key]);//属性的值
+    }
+}
+```
+
+- for-in循环有一个缺点，他不仅会遍历特定对象的本地属性，还会遍历其继承的对象上的属性
+
+- 循环访问的属性并不是其被定义的顺序

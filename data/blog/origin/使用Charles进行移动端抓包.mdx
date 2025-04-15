@@ -1,0 +1,40 @@
+---
+title: 使用Charles进行移动端抓包
+date: '2018-10-17T12:47:35.000Z'
+tags:
+  - tools
+  - http/https
+draft: false
+summary: ''
+---
+
+[Charles](https://www.charlesproxy.com/)是一款代理服务器，通过将自己设置成系统（电脑/移动端）的网络访问代理服务器，然后截取请求和请求结果，以达到分析抓包的目的。
+
+
+
+# 下载/破解
+
+官网下载，然后破解：[Charles 在线破解工具](https://www.zzzmode.com/mytools/charles/)
+
+# 使用
+
+电脑与手机连接同一wifi，手机设置WIFI代理：
+
+```markdown
+主机名：电脑局域网ip
+端口：8888 (charles默认端口)
+```
+
+在charles中即可查看手机的所有网络请求。
+
+# https请求
+
+使用charles抓取http请求可以直接查看详情，但是对于https请求，由于https的使用了SSL协议加密了报文，因此需要在客户机（手机）与服务器（电脑）上安装证书，否则在charles上无法查看https请求内容，显示为unknown。
+
+如何安装证书： [Charles抓取https请求详解](https://www.cnblogs.com/ceshijiagoushi/p/6812493.html)
+
+[mac参考](https://www.cnblogs.com/pengyunjing/p/9158009.html)
+
+## 坑
+
+手机自带浏览器打开`chls.pro/ssl`或`http://charlesproxy.com/getssl`可能下载得到`getssl.crt`文件，是无法安装的，这时需要使用第三方浏览器下载得到`charles-proxy-ssl-proxying-certificate.pem`。

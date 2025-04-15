@@ -1,0 +1,395 @@
+---
+title: css渐变与动态渐变
+date: '2019-01-21T18:26:16.000Z'
+tags:
+  - css
+draft: false
+summary: ''
+---
+
+<div style="
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(90deg, #496eaa, #944fa8, #a8804f, #944fa8, #496eaa);
+    background-size: 1400% 300%;
+    animation: dynamics 20s ease infinite;
+    -webkit-animation: dynamics 20s ease infinite;
+    -moz-animation: dynamics 20s ease infinite;">
+</div>
+
+渐变色已经很常见了，如何把渐变色做成动态变化或者做出更酷炫的效果？
+
+
+
+# css渐变
+
+CSS 中设置的渐变是 gradient 数据类型，它是一种特别的image数据类型。使用`background-image`设置，可叠加设置多个；
+
+CSS3 定义了两种类型的渐变（gradients）：
+
+## 线性渐变 linear-gradient()
+
+渐变的实现由两部分组成：渐变线和色标。渐变线用来控制发生渐变的方向；色标包含一个颜色值和一个位置，用来控制渐变的颜色变化。浏览器从每个色标的颜色淡出到下一个，以创建平滑的渐变，通过确定多个色标可以制作多色渐变效果。
+使用渐变色做背景已经很常见了：
+
+```css
+background: linear-gradient(direction/angle, color-stop1, color-stop2, ...);
+```
+
+### 方向（direction）
+
+#### 从上到下（默认情况下）
+
+```css
+.foo {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(green, yellow);
+}
+```
+
+<div style="width: 100px; height: 100px; background: linear-gradient(green, yellow);"></div>
+
+#### 从左到右
+
+从右到左同理。
+兼容性原因，不同浏览器写法不同：
+
+```css
+.foo {
+    background: linear-gradient(to right, green, yellow); /* 标准的语法 */
+    background: -webkit-linear-gradient(left, green, yellow); /* Safari 5.1 - 6.0 */
+    background: -o-linear-gradient(right, green, yellow); /* Opera 11.1 - 12.0 */
+    background: -moz-linear-gradient(right, green, yellow); /* Firefox 3.6 - 15 */
+}
+```
+
+<div style="width: 100px; height: 100px; background: linear-gradient(to right, green, yellow);"></div>
+
+#### 对角
+
+```css
+.foo {
+    background: linear-gradient(to bottom right, green, yellow); /* 标准的语法 */
+    background: -webkit-linear-gradient(left top, green, yellow); /* Safari 5.1 - 6.0 */
+    background: -o-linear-gradient(bottom right, green, yellow); /* Opera 11.1 - 12.0 */
+    background: -moz-linear-gradient(bottom right, green, yellow); /* Firefox 3.6 - 15 */
+}
+```
+
+<div style="width: 100px; height: 100px; background: linear-gradient(to bottom right, green, yellow);"></div>
+
+### 角度（deg）
+
+<img src="http://static.simmzl.cn/deg.jpg" width="400" />
+
+0deg 将创建一个从下到上的渐变，90deg 将创建一个从左到右的渐变。
+
+### 色标 (color-stop)
+
+由一个color值组成，并且跟随着一个可选的终点位置（可以是一个百分比值或者是沿着渐变轴的length）。
+
+未设置位置时默认情况下颜色均匀分布。
+
+有时候我们不希望一开始就出现渐变，可以从中间某个地方开始最好。这时候就可以使用百分比等了。
+
+```css
+.foo {
+    width: 200px;
+    height: 100px;
+    background: linear-gradient(to right, green, white 10%, yellow);
+    /* background: linear-gradient(to right, green, white 20px, yellow); 等同 */
+}
+```
+
+使用百分比：
+
+<div style="width: 200px; height: 100px; background: linear-gradient(to right, green, white 10%, yellow);"></div>
+
+使用长度：
+<div style="width: 200px; height: 100px; background: linear-gradient(to right, green, white 20px, yellow);"></div>
+
+中间的白色从容器10%的位置开始渐变，挤压了绿色区域；
+
+## 径向渐变 radial-gradient()
+
+```css
+.foo {
+    background-image: radial-gradient(shape size at position, start-color, ..., last-color);
+}
+```
+
+### shape
+
+- ellipse (默认): 椭圆形
+
+- circle ：圆形
+
+```css
+.foo {
+    background-image: radial-gradient(red, yellow, green);
+}
+```
+<div style="width: 200px; height: 150px; background: radial-gradient(red, yellow, green);"></div>
+
+```css
+.foo {
+    background-image: radial-gradient(circle, red, yellow, green);
+}
+```
+
+<div style="width: 200px; height: 150px; background: radial-gradient(circle, red, yellow, green);"></div>
+
+### size
+
+定义渐变的大小:
+
+- farthest-corner (默认) : 指定径向渐变的半径长度为从圆心到离圆心最远的角
+
+    ```css
+    .foo {
+        background-image: radial-gradient(ellipse farthest-corner at 80px 50px, red, yellow, green);
+    }
+    ```
+    <div
+        style="
+        width: 200px;
+        height: 150px;
+        background: radial-gradient(ellipse at 80px 50px, red, yellow, green);">
+    </div>
+
+- closest-side ：渐变的边缘形状与容器距离渐变中心点最近的一边相切（圆形）或者至少与距离渐变中心点最近的垂直和水平边相切（椭圆）。
+
+    ```css 
+    .foo {
+        background-image: radial-gradient(closest-side at 80px 50px, red, yellow, green);
+    }
+
+    .bar {
+        background-image: radial-gradient(circle closest-side at 80px 50px, red, yellow, green);
+    }
+    ```
+
+    渐变椭圆与距中心点最近的垂直和水平边相切：
+    <div
+        style="
+        width: 200px;
+        height: 150px;
+        background: radial-gradient(circle closest-side at 80px 50px, red, yellow );">
+    </div>
+
+    渐变圆与距中心点最近的垂直和水平边相切：
+
+    <div
+        style="
+        width: 200px;
+        height: 150px;
+        background: radial-gradient(circle closest-side at 80px 50px, red, yellow );">
+    </div>
+
+- closest-corner ： 指定径向渐变的半径长度为从圆心到离圆心最近的角
+
+    <div
+        style="
+        width: 200px;
+        height: 150px;
+        background: radial-gradient(closest-corner at 80px 50px, red, yellow, green );">
+    </div>
+
+- farthest-side ：与closest-side相反，边缘形状与容器距离渐变中心点最远的一边相切（或最远的垂直和水平边）。
+
+    <div
+        style="
+        width: 200px;
+        height: 150px;
+        background: radial-gradient(farthest-side at 80px 50px, red, yellow, green );">
+    </div>
+
+### position
+
+position与background-position或者transform-origin类似。如缺省，默认为中心点center。
+
+### color
+
+与linear-gradient相似， color + 一个百分比值或者length;
+
+## 重复渐变 repeating
+
+### repeating-linear-gradient()
+
+```css
+background: repeating-linear-gradient(angle | to side-or-corner, color-stop1, color-stop2, ...);
+```
+
+```css
+background-image: repeating-linear-gradient(90deg, red, yellow 10%);">
+```
+
+<div
+    style="
+    width: 200px;
+    height: 100px;
+    background-image: repeating-linear-gradient(90deg, green, yellow 20%);">
+</div>
+
+有趣的玩法：
+
+```css
+.foo {
+    width: 200px;
+    height: 100px;
+    background-image: repeating-linear-gradient(45deg, orange, orange 25px, #FFF 25px, #FFF 50px);
+}
+```
+
+<div
+    style="
+    width: 200px;
+    height: 100px;
+    background-color: orange;
+    background-image: repeating-linear-gradient(90deg, transparent, transparent 25px, #FFF 25px, #FFF 50px);">
+</div>
+
+45deg:
+
+<div
+    style="
+    width: 200px;
+    height: 100px;
+    background-color: #000;
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 25px, #FFF 25px, #FFF 50px);">
+</div>
+
+.
+<div
+    style="
+    height: 10px;
+    background-image: repeating-linear-gradient(135deg, orange, orange 10px, #FFF 10px, #FFF 20px);">
+</div>
+
+大佬使用渐变制作的近百个滑块示例: [滑块示例](https://codepen.io/collection/DgYaMj/)
+
+### repeating-radial-gradient()
+
+通过使用**background叠加**，实现唱片效果：
+
+```html
+<div class="record"></div>
+```
+
+```CSS
+.record {
+    position: relative;
+    margin: 0 auto;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background:
+        linear-gradient(30deg, transparent 40%, rgba(42, 41, 40, .85) 40%) no-repeat 100% 0,
+        linear-gradient(60deg, rgba(42, 41, 40, .85) 60%, transparent 60%) no-repeat 0 100%,
+        repeating-radial-gradient(#2a2928, #2a2928 4px, #ada9a0 5px, #2a2928 6px);
+    background-size: 50% 100%, 100% 50%, 100% 100%;
+    box-shadow: 5px 10px 20px #ccc;
+}
+.record:after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -35px;
+    border: solid 1px #d9a388;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px #da5b33,
+        inset 0 0 0 27px #da5b33;
+    background: #fff;
+    content: '';
+}
+```
+
+<div style="
+    position: relative;
+    margin: 0 auto;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background:
+        linear-gradient(30deg, transparent 40%, rgba(42, 41, 40, .85) 40%) no-repeat 100% 0,
+        linear-gradient(60deg, rgba(42, 41, 40, .85) 60%, transparent 60%) no-repeat 0 100%,
+        repeating-radial-gradient(#2a2928, #2a2928 4px, #ada9a0 5px, #2a2928 6px);
+    background-size: 50% 100%, 100% 50%, 100% 100%;
+    box-shadow: 5px 10px 20px #ccc;">
+    <div style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin: -35px;
+        border: solid 1px #d9a388;
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px #da5b33,
+            inset 0 0 0 27px #da5b33;
+        background: #fff;
+    ">
+    </div>
+</div>
+
+附上：[张鑫旭-10个demo示例学会CSS3 radial-gradient径向渐变](https://www.zhangxinxu.com/wordpress/2017/11/css3-radial-gradient-syntax-example/)
+
+## 动态变化
+
+通过预先设置好渐变，通过animation移动`background-position`来呈现渐变动态变化的效果。为了使动画首尾看上去无缝衔接，渐变的首尾颜色需相同；
+
+```html
+<div class="dynamics"></div>
+```
+
+```css
+.dynamics {
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(90deg, #496eaa, #944fa8, #a8804f, #944fa8, #496eaa);
+    background-size: 1400% 300%;
+    animation: dynamics 20s ease infinite;
+    -webkit-animation: dynamics 20s ease infinite;
+    -moz-animation: dynamics 20s ease infinite;
+}
+@keyframes dynamics {
+    0% {
+        background-position: 0% 0%;
+    }
+
+    50% {
+        background-position: 50% 100%;
+    }
+
+    100% {
+        background-position: 100% 0%;
+    }
+}
+```
+
+原始渐变：
+
+<div style="
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(90deg, #496eaa, #944fa8, #a8804f, #944fa8, #496eaa);">
+</div>
+
+加入动画后：
+
+<div style="
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(90deg, #496eaa, #944fa8, #a8804f, #944fa8, #496eaa);
+    background-size: 1400% 300%;
+    animation: dynamics 20s ease infinite;
+    -webkit-animation: dynamics 20s ease infinite;
+    -moz-animation: dynamics 20s ease infinite;">
+</div>
+
+## 参考
+
+[MDN-linear-gradient](https://developer.mozilla.org/zh-CN/docs/Web/CSS/linear-gradient)
+
+[MDN-radial-gradient](https://developer.mozilla.org/zh-CN/docs/Web/CSS/radial-gradient)

@@ -1,0 +1,53 @@
+---
+title: HTML DOM的nodeType属性
+date: '2017-10-25T22:53:42.000Z'
+tags:
+  - js
+  - q&a
+  - javascript
+draft: false
+summary: ''
+---
+
+## 遇到这样一个问题：
+
+```html
+<div id="container">
+    <p class="active">first</p>
+</div>
+```
+
+在知道父级id之后，我想选取其firstChild即`<p class="active">first</p>`,但是`container.firstChild.className` 却是undefined！
+
+```javascript
+let container = document.getElementById('container');
+console.log(container.firstChild.className);//undefined
+```
+
+
+
+## HTML DOM的nodeType属性（节点类型）：
+
+nodeType一共存在 12 种不同的节点类型；详细的可看[W3school的文档](http://www.w3school.com.cn/jsref/prop_node_nodetype.asp)
+这里直说常见的前3种：
+
+- Element，元素节点，nodeType返回1；
+- Attr，属性节点，nodeType返回2；
+- Text，文本节点，nodeType返回3；
+
+当使用`element.firstChild`时，因为`<p class="active">first</p>` 之前有换行，所以会返回3，即文本节点。
+
+### 解决方法：
+
+- 使用`firstElementChild`替代`firstChild`，顾名思义，即选取第一个元素节点；
+- 使用`childNodes[1]`替代`firstChild`，即选取第二个子节点。
+
+## nodeName（节点名称）&nodeValue（节点值）
+
+| nodeType| nodeName| nodeValue|
+|-|---|--|
+|Element|元素名（p/div/...）|null|
+|Attr|属性名称（name/class/id/...）|属性值|
+|Text|\#text|text内容|
+
+参考了[DOM中元素节点、属性节点、文本节点的理解](http://www.cnblogs.com/dh616854836/archive/2011/08/14/2138038.html)和[W3school](http://www.w3school.com.cn/jsref/prop_node_nodetype.asp)

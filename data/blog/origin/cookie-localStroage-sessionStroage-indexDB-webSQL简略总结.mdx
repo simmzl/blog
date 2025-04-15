@@ -1,0 +1,222 @@
+---
+title: cookie/localStroage/sessionStroage/indexDB/webSQL简略总结
+date: '2018-08-03T15:45:10.000Z'
+tags:
+  - js
+  - html
+  - javascript
+draft: false
+summary: ''
+---
+
+日常开发用到最多的是localStroage,其次是cookie,但浏览器存储还包括sessionStroage、indexDB和webSQL，做一下简略总结。
+
+
+
+# cookie
+
+大小限制4k;
+
+## 服务器创建
+
+当服务器收到HTTP请求时，服务器可在响应头里添加`Set-Cookie`选项。浏览器收到响应后通常会保存下Cookie，之后对该服务器每一次请求中都通过Cookie请求头部将Cookie信息发给服务器。
+响应报文：
+
+```markdown
+HTTP/1.0 200 OK
+Content-type: text/html
+Set-Cookie: yummy_cookie=choco
+Set-Cookie: tasty_cookie=strawberry
+```
+
+之后发送的请求报文：
+
+```markdown
+GET /sample_page.html HTTP/1.1
+Host: www.example.org
+Cookie: yummy_cookie=choco; tasty_cookie=strawberry
+```
+
+## 浏览器创建
+
+```javascript
+document.cookie="key=value[; expires=date][; domain=domain][; path=path][; secure][; HttpOnly]"
+```
+
+### 键值对
+
+多个赋值时，最好分开：
+
+```javascript
+document.cookie="key=value";
+document.cookie="key1=value1";
+```
+
+网上很多使用分号加空格的，并不能多个赋值。
+
+### expires
+
+有效期，不设置会 **在浏览器关闭之后被自动删除**；
+
+设置格式为GMT时间格式。
+
+```javascript
+const t = new Date( Date.now() + 1000 * 120 );
+document.cookie = `name=monsterooo;expires=${t.toGMTString()};`;
+```
+
+### 作用域 Domain & Path
+
+Domain 标识指定了哪些host可以接受Cookie。设置`Domain=.simmzl.cn`后，子域名可以接受这些host Cookie；
+
+Path 标识指定了host下的哪些路径可以接受Cookie,
+
+例如，设置`Path=/docs`，则以下地址都会匹配：
+
+```markdown
+/docs
+/docs/Web/
+/docs/Web/HTTP
+```
+
+### 安全 secure & HttpOnly
+
+标记为 `Secure` 的`Cookie`只应通过被HTTPS协议加密过的请求发送给服务端。
+
+为避免跨域脚本(XSS)攻击，通过JavaScript的`Document.cookie API`无法访问带有 `HttpOnly` 标记的`Cookie`，它们只应该发送给服务端。
+
+```markdown
+Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure; HttpOnly
+```
+
+关于[XSS和CSRF](https://blog.simmzl.cn/2017/11/11%E6%9C%88%E7%AC%94%E8%AF%95%E9%A2%98&%E9%9D%A2%E8%AF%95.html)
+
+## 获取cookie
+
+```javascript
+const getCookie = key => {
+    const cookies = document.cookie.split(";");
+    const len = cookies.length;
+    for (let i=0; i < len; i++) {
+        // 去掉头部空格
+        const keyVal = cookies[i].trim().split("=");
+        if (keyVal[0] === key) return keyVal[1];
+    }
+    return "";
+}
+```
+
+## 修改&删除cookie
+
+修改即重新赋值；
+
+删除就是将该`key`设为空，`expires`设为过去的时间，正常设为 `-1`：
+
+```javascript
+document.cookie="key=; expires=-1";
+```
+
+# localStroage
+
+- `HTML5`新加入
+
+- 仅限于该页面的协议
+
+- 一般浏览器支持的是5M大小
+
+- 所有的浏览器中都会把`localStorage`的`value`定为`string`类型，需要使用`JSON.parse()`、`JSON.stringify()`转换。
+
+- localStorage在浏览器的隐私模式下面是不可读取的
+
+- localStorage本质上是对字符串的读取，如果存储内容多的话会消耗内存空间，会导致页面变卡
+
+- localStorage不能被爬虫抓取到
+
+- localStroage不能设置过期时间，会一直存在。但是可以手动设置过期时间，下次读取时判断是否过期，只当没过期才读取
+
+## 创建
+
+```javascript
+localStorage["a"] = 1;
+localStorage.a = 1;
+localStorage.setItem("a", 1);
+```
+
+完善版本：
+
+```javascript
+const cacheSet = (key, value, expire) => {
+    const win = window;
+    if (!win.JSON || !win.JSON.parse) return;
+    let expireMils = -1;
+    if (expire) expireMils = Date.now() + expire;
+    const data = {
+        value: value,
+        expire: expireMils
+    };
+    localStorage[key] = JSON.stringify(data);
+};
+```
+
+## 读取
+
+```javascript
+localStorage["a"];
+localStorage.a;
+localStorage.getItem("a");
+```
+
+完善版本：
+
+```javascript
+const cacheGet = key => {
+    const win = window;
+    if (!win.JSON || !win.JSON.parse) return;
+    let data = {};
+    try {
+        // JSON.parse(undefined)会报错
+        data = JSON.parse(localStorage[key]);
+    } catch (e) {
+        return;
+    }
+    // 没有设置有效期
+    if (data.expire === -1) return data.value;
+    // 有效期内
+    if (data.expire > Date.now()) return data.value;
+};
+```
+
+## 删除
+
+删除单个：
+
+```javascript
+localStorage.removeItem("a");
+```
+
+删除所有：
+
+```javascript
+localStorage.clear();
+```
+
+# sessionStroage
+
+增删查改和特性与 `localStorage` 相同,但在新标签或窗口打开一个页面会初始化一个新的会话，浏览器关闭会被清除。
+
+# indexDB
+
+IndexedDB 用于客户端存储大量结构化数据(包括文件/ blobs)。该API使用索引来实现对该数据的高性能搜索。虽然 Web Storage 对于存储较少量的数据很有用，但对于存储更大量的结构化数据来说，这种方法不太有用。
+但是，实际开发用indexDB场景不多。
+
+# web SQL
+
+Web SQL 数据库 API 并不是 HTML5 规范的一部分，但是它是一个独立的规范，引入了一组使用 SQL 操作客户端数据库的 APIs。
+
+如果你是一个 Web 后端程序员，应该很容易理解 SQL 的操作。要用到SQL语句，差不多就是基于浏览器的SQL,实际开发应用场景不多。
+
+# 参考
+
+[浏览器存储(cookie、localStorage、sessionStorage)](https://www.cnblogs.com/monsterooo/p/6815392.html)
+[Web Storage API](https://developer.mozilla.org/zh-CN/docs/Web/API/Web_Storage_API)
+[localStorage使用总结](https://www.cnblogs.com/st-leslie/p/5617130.html)

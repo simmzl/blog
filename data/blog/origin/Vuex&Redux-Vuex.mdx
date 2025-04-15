@@ -1,0 +1,359 @@
+---
+title: Vuex & Redux - Vuex
+date: '2019-06-11T18:50:38.000Z'
+tags:
+  - javascript
+draft: false
+summary: ''
+---
+
+# 状态管理模式
+
+在单页应用的开发中，Vue全家桶的Vuex和React全家桶的Redux都是统一的状态管理工具/模式。它们是全局的，简单来说，就是在state中定义一个数据，就可以在整个项目中获取、修改，并且修改会得到全局的响应变更；
+
+这些状态管理工具适用于中大型项目，在小型项目会使得项目变得繁杂；
+
+
+
+# Vuex架构
+
+先上一张Vuex官网的架构图：
+
+![vuex](https://static.simmzl.cn/img/vuex.png)
+
+## 常见的目录结构
+
+- src
+ - store
+   - modules    // 模块定义store
+     - module.js // 单个模块
+   - index.js   // 用于引入各个单一模块，new一个store
+   - types.js   // 定义常量
+
+## State
+
+Vuex使用的是单一状态树，即state是一个对象，包含了所有定义的数据。
+
+在单一的模块module.js中，我们可以这样定义一个数据：
+
+```js
+const person = {
+    state: {
+        name: "tom",
+        age: 20
+    }
+};
+
+export default person;
+```
+
+然后由index.js统一引入，实例化一个新的store：
+
+```js
+import Vue from "vue";
+import Vuex from "vuex";
+import person from "@/store/modules/module";
+
+Vue.use(Vuex);
+
+const store = new Vuex.Store({
+    modules: {
+        person
+    }
+});
+
+export default store;
+```
+
+最后在main.js中注入全局：
+
+```js
+import Vue from "vue";
+import store from "@/store";
+
+new Vue({
+    store
+});
+```
+
+### state值获取 & mapState
+
+我们需要person的信息时，使用`this.$store.state.person`即可获取。
+
+单当统一组件多次需要person、person1的信息时，这时候使用**mapState函数**就很很方便。其中mapState中的函数接收的参数是**该模块局部状态对象state**。
+
+```js
+// vuex自带的mapState api
+import { mapState } from "vuex";
+
+export default {
+    // ...
+    computed: {
+        getTest() { return "test" },
+
+        mapState({
+            // 箭头函数可使代码更简练
+            person: state => state.person,
+
+            // 传字符串参数 'person' 等同于 `state => state.person`
+            personAlias: 'person',
+
+            // 为了能够使用 `this` 获取局部状态，必须使用常规函数
+            personName(state) {
+                return state.person.name + this.localPerson.name
+            }
+        })
+
+        // 对象展开运算符更方便
+        // ...mapState({
+        //     person: state => state.person
+        // })
+
+        // 对象展开运算符加名称缩写究极方便
+        // ...mapState([
+        //     "person"
+        // ])
+    }
+}
+```
+
+## Getters
+
+有时候我们不仅仅需要state的值，多个组件需要这个值的衍生值，如将数值由人民币换算成美元，这时候就是getter出场的时候了，这一点它有点类似compute，getters返回值会根据它的依赖被缓存起来，且只有当它的依赖值发生了改变才会被重新计算。
+
+getter接受 `state` 作为其**第一个参数**，接受 `getters` 作为其**第二参数**，对于模块内部的getter来说，接受`rootState`作为**第三个参数**，为根节点的state。
+
+```js
+const person = {
+    state: {
+        name: "tom",
+        age: 20,
+        money: 100
+    },
+    getters: {
+        getAge(state) {
+            return state.age / 10;
+        }
+
+        convert(state, getters, rootState) => {
+            // 第二个参数getters返回该store.getters对象
+            return state.money * 100 * getters.getAge;
+        },
+
+        // getter也可以返回函数，以达到传参的目的
+        // 1:人民币转美元  0:反之
+        convertByRate: (state) => (type) => {
+            const rate = type === 1 ? 6.8925 : 0.1451;
+            return state.money * rate;
+        }
+    }
+};
+```
+
+```js
+// getter传参
+// 转美元
+this.$store.getters.convertByRate(1);
+```
+
+### mapGetters
+
+用法和mapState相同，将 store 中的 getter 映射到局部计算属性
+
+mapGetters中方法接受一个参数：context对象，等同于store实例
+
+```js
+// 组件中：
+import { mapGetters } from "vuex";
+// ...
+computed: ...mapGetters({
+    convert: context => context.getters.convert
+});
+// computed: ...mapGetters([
+//     "convert"
+// ]);
+```
+
+## Mutations 同步事务
+
+Vuex中，在组件中直接改变state的值是不行的，**唯一**改变状态的方法是提交 **mutation** 。每个 mutation 都有一个字符串的 事件类型 (type) 和 一个 回调函数 (handler)，这是官方的说法，我觉得其实就是事件名和事件本体啦，这样更好理解。**事件第一个参数是state，第二个参数是载荷（payload），可选，一般情况下是一个对象。**（载荷payload这个名字也是很有逼格，redux中也是这样叫的，vuex参考了redux）
+
+还是之前的例子：
+
+```js
+const person = {
+    state: {
+        name: "tom",
+        age: 20,
+        money: 100
+    },
+    getters: {
+        getAge(state) {
+            return state.age / 10;
+        }
+    },
+    mutations: {
+        setName(state, payload) {
+            state.name = payload.name;
+        }
+
+        // 或者简单点，不传对象直接传值
+        // setName(state, val) {
+        //     state.name = val;
+        // }
+    }
+};
+```
+
+那么怎么调用这个mutation来改变state的值呢？
+
+```js
+this.$store.commit("setName", { name: "rachael" });
+
+// 对象的形式调用
+this.$store.commit({
+    type: "setName",
+    name: "rachael"
+});
+```
+
+### mapMutations
+
+同mapState 与 mapGetters用法，我们将mutation的方法映射到本地组件中；
+
+```js
+import { mapMutations } form "vuex";
+
+export default {
+    methods: {
+        ...mapMutations([
+            // 将this.setName(payload) 映射为 this.$store.commit("setName", payload)
+            "setName"
+        ])
+    }
+}
+```
+
+在mutations中只支持同步事件，需要处理一些http请求等异步事件时就需要actions了
+
+## Actions 异步事务
+
+在action中，不是直接改变状态的值，而是提交mutation来改变。action中可以包含任意的异步操作。
+
+还是之前的例子：
+
+```js
+const person = {
+    state: {
+        name: "tom",
+        age: 20,
+        money: 100
+    },
+    getters: {
+        getAge(state) {
+            return state.age / 10;
+        }
+    },
+    mutations: {
+        setName(state, payload) {
+            state.name = payload.name;
+        }
+    },
+    actions: {
+        setName(context) {
+            // context参数与 store 实例具有相同方法和属性，当不等同于store实例，其还有rootState属性，即根节点state
+            setTimeout(() => {
+                context.commit("setName", { name: "rachael" });
+            }, 1000)
+        },
+
+        // 参数解构简写
+        // setName({ commit, rootState }) {
+        //     rootState为该模块根节点state值
+        //     commit("setName", { name: "rachael" });
+        // }
+    }
+};
+```
+
+### 调用action
+
+```js
+this.$store.dispatch('setName', { name: "rachael" });
+```
+
+同样也有mapActions函数，用法和mapMutations相同；
+
+当一个action函数需要调用其他异步的action1时，将action1返回一个Promise并结合`async / await`调用即可。
+
+
+## 命名空间
+
+默认情况下，模块内部的 **action、mutation 和 getter 是注册在全局命名空间**的。在调用时，直接全局调用：
+
+```js
+this.$store.getters.getAge();
+this.$store.commit("setName", { name: "rachael" });
+this.$store.dispatch("setName", { name: "rachael" });
+```
+
+注册为模块命名空间的就不讨论了，一般用默认的全局就可以了，模块命名空间会麻烦很多。
+
+## 常量表示
+
+使用常量代替方法名，再把这些常量放在统一的一个文件：types.js中，有助于我们维护和理解。
+
+types.js:
+
+```js
+export const SET_NAME = "SET_NAME";
+export const GET_NAME = "GET_NAME";
+```
+
+在module.js中就可以改为：
+```js
+import {
+    SET_NAME,
+    GET_NAME
+} form "@/store/types";
+
+const person = {
+    state: {
+        name: "tom",
+        age: 20,
+        money: 100
+    },
+    getters: {
+        [GET_NAME](state) {
+            return state.age / 10;
+        }
+    },
+    mutations: {
+        [SET_NAME](state, payload) {
+            state.name = payload.name;
+        }
+    },
+    actions: {
+        [GET_NAME]({ commit, rootState }) {
+            // context参数与 store 实例具有相同方法和属性，当不等同于store实例，其还有rootState属性，即根节点state
+            setTimeout(() => {
+                commit("setName", { name: "rachael" });
+            }, 1000)
+        }
+    }
+};
+```
+
+```js
+this.$store.getters.[GET_NAME]();
+this.$store.commit("SET_NAME", { name: "rachael" });
+this.$store.dispatch("SET_NAME", { name: "rachael" });
+```
+
+## 总结
+
+再回到这张图，是不是就好理解了～
+
+![vuex](https://static.simmzl.cn/img/vuex.png)
+
+![store](https://static.simmzl.cn/img/store.png)

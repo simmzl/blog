@@ -1,0 +1,123 @@
+---
+title: iphonex系列css适配
+date: '2019-09-14T18:55:19.000Z'
+tags:
+  - hybrid
+  - css
+draft: false
+summary: ''
+---
+
+在hybrid中，会遇到native把全屏交给webview的情况，在iphone刘海屏手机上就需要做刘海屏、底部小黑条适配了
+
+![](https://static.simmzl.cn/11.jpg)
+
+
+
+## safe area / 安全区域
+
+iphonex之后引入的新概念，安全区域指的是一个可视窗口范围，处于安全区域的内容不受圆角（corners）、齐刘海（sensor housing）、小黑条（Home Indicator）影响，如下图所示：
+
+![img](https://static.simmzl.cn/20190912170510.jpg)
+
+## viewport-fit
+
+iOS11 新增特性，苹果公司为了适配 iPhoneX等刘海屏， 对现有 viewport meta 标签的一个扩展，用于设置网页在可视窗口的布局方式，可设置 三个值：
+
+- auto 默认
+- contain 可视窗口完全**包含**网页内容，左图
+- cover 网页内容完全**覆盖**可视窗口，即页面完全充满屏幕，右图。**适配关键！**
+
+![img](https://static.simmzl.cn/20190912161522.jpg)
+
+
+```html
+<meta name="viewport" content="viewport-fit=cover">
+```
+
+## constant(safe-area-inset-*)函数
+
+iOS11 新增特性，Webkit 的一个 CSS 函数，用于设获取安全区域与边界的距离，有四个预定义的变量（单位是px）：
+
+- safe-area-inset-left：安全区域距离左边界距离，**横屏时适配**
+- safe-area-inset-right：安全区域距离右边界距离，**横屏时适配**
+- safe-area-inset-top：安全区域距离顶部边界距离， **竖屏刘海适配关键**
+- safe-area-inset-bottom：安全区域距离底部边界距离，**竖屏小黑条适配关键**
+
+适配的核心是：**通过 constant() 可以获取到非安全边距，再结合 padding 或 margin 来控制页面元素避开非安全区域。**
+
+Webkit在iOS11中新增CSS Functions: env( )替代constant( )，文档中推荐使用env( )，而 constant( ) 从Safari Techology Preview 41 和iOS11.2 Beta开始会被弃用。在不支持env( )的浏览器中，会自动忽略这一样式规则，不影响网页正常的渲染。为了达到最大兼容目的，我们可以 constant( ) 和 env( ) 同时使用。
+
+```css
+padding-bottom: constant(safe-area-inset-bottom); /* iOS 11.0 */
+padding-bottom: env(safe-area-inset-bottom); /* iOS 11.2 */
+```
+
+## @supports隔离兼容模式
+
+使用@supports查询机型是否支持 constant() / env()实现兼容代码隔离：
+
+```css
+@supports ((height: constant(safe-area-inset-top)) or (height: env(safe-area-inset-top))) {
+  body {
+    /* 适配齐刘海*/
+    padding-top: constant(safe-area-inset-top);
+
+    /* 兼容 */
+    /* padding-top: env(safe-area-inset-top); */
+
+    /* padding-top: calc(40px(原来的bottom值) + constant(safe-area-inset-top)); */
+
+    /* 适配底部黑条*/
+    padding-bottom: constant(safe-area-inset-bottom);
+  }
+}
+```
+
+**但是**，实际需求个别安卓也会成功进入这个判断，因此加上`-webkit-overflow-scrolling: touch`的判断可以有效规避安卓机。
+
+```css
+@supports ((height: constant(safe-area-inset-top)) or (height: env(safe-area-inset-top))) and (-webkit-overflow-scrolling: touch) {}
+```
+
+## 精确到机型做适配
+
+通过宽高、像素比来判断机型，也可以做具体适配：
+
+![img](https://static.simmzl.cn/20190912174136.jpg)
+
+```css
+/* iphone x / xs / 11 pro*/
+@media only screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) {
+  
+}
+/* iphone xr / 11 */
+@media only screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) {
+  
+}
+/* iphone xs max / 11 pro max */
+@media only screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) {
+  
+}
+```
+
+当然可以使用scss，写机型判断的全局变量，使用时直接使用变量
+
+```scss
+// iphone x/xs/11 pro
+$device-x: "screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)";
+// iphone xr/11
+$device-xr: "screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)";
+// iphone x/xs/11pro max
+$device-xmax: "screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)";
+```
+
+```scss
+@media #{unquote($device-x)},
+       #{unquote($device-xr)},
+       #{unquote($device-xmax)} {
+        //  do something
+       }
+```
+
+等iphone12......

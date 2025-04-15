@@ -1,0 +1,96 @@
+---
+title: flex布局
+date: '2017-08-24T16:26:16.000Z'
+tags:
+  - css
+  - flex
+draft: false
+summary: F
+---
+Flex是Flexible Box的缩写，意为”弹性布局”，用来为盒状模型提供最大的灵活性。
+任何一个容器都可以指定为Flex布局。
+
+学习flex推荐使用[flexbox froggy](http://flexboxfroggy.com)，一个学习CSS flexbox布局的小游戏,事半功倍！
+
+![FLOG](http://static.simmzl.cn/blog/170929/H8HBJ4i9je.png)
+
+苟利...
+
+
+## 使用
+
+行内元素也可以使用Flex布局。
+
+```css
+.box{
+    display:inline-flex;
+}
+```
+
+Webkit内核的浏览器，必须加上-webkit前缀。
+
+```css
+.box{
+  display:-webkit-flex;/* Safari */
+  display: flex;
+}
+
+```
+
+注意，设为Flex布局以后，子元素的float、clear和vertical-align属性将失效。
+
+## 主要的6个属性：
+
+- flex-direction - 确定主轴方向
+- flex-wrap - 定义怎么换行
+- flex-flow - 上面两个属性的简写
+- justify-content - 主轴对齐方式
+- align-items - 主轴垂直方向对齐方式
+- align-content - 多根轴线怎么对齐方式
+
+### flex-direction属性决定主轴的方向（即项目的排列方向）。
+
+```css
+.box {
+  flex-direction: row | row-reverse | column | column-reverse;
+}
+```
+
+### 默认情况下，项目都排在一条线（又称”轴线”）上。flex-wrap属性定义，如果一条轴线排不下，如何换行。
+
+```css
+.box{
+  flex-wrap: nowrap | wrap | wrap-reverse;
+}
+```
+
+### flex-flow属性是flex-direction属性和flex-wrap属性的简写形式，默认值为row nowrap。
+
+```css
+.box {
+  flex-flow:<flex-direction>||<flex-wrap>;
+}
+```
+
+### justify-content属性定义了项目在主轴上的对齐方式。
+
+```css
+.box {
+  justify-content: flex-start | flex-end| center | space-between | space-around;
+}
+```
+
+### align-items属性定义项目在交叉轴上如何对齐。
+
+```css
+.box {
+  align-items: flex-start | flex-end| center | baseline | stretch;
+}
+```
+
+### align-content属性定义了多根轴线的对齐方式。如果项目只有一根轴线，该属性不起作用
+
+```css
+.box {
+  align-content: flex-start | flex-end| center | space-between | space-around | stretch;}
+```

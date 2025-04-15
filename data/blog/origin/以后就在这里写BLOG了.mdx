@@ -1,0 +1,90 @@
+---
+title: 以后就在这里写Blog了
+date: '2017-09-29T21:25:25.000Z'
+tags:
+  - hexo
+  - prattle
+draft: false
+summary: ''
+---
+
+#### 初衷
+
+最早的时候，我使用wordpress在自己的云服务器上搭建了博客，可是wordpress体积还是有些大的，有着繁琐的后台管理程序和数据库，因为一次倒腾配置文件的失误或者插件安装的问题，导致整个博客后台无法运行，删除了wordpress之后就没有再写博客了。
+后来开始在CSDN上写，CSDN还是有诸多限制的，而且CSDN给我一种只适合写技术类文章的感觉，不过好在值得信任，方便，打开即用。
+不过作为前端，还是想有个由自己域名搭建的轻量级博客，除了技术类文章也可以发发吐槽、照片之类的东西，一切由自己决定。
+
+
+#### 选择hexo
+
+昨天看了一些安装Hexo的文章，很有帮助，比如[知行合一 | 用 Hexo 搭建博客](http://lowrank.science/Hexo-Github/)；
+找了很多主题，逛了不少由hexo搭建的博客，最终在[next](https://github.com/iissnan/hexo-theme-next)和[yilia](https://github.com/litten/hexo-theme-yilia)之间选择了[next.mist](https://github.com/iissnan/hexo-theme-next)；
+其中yilia的作者[litten](http://litten.me/)的博客很值得一看，很喜欢他生活的态度。
+
+#### 坑
+
+当然在配置hexo中也遇到一些坑，
+
+- 在**站点配置文件**中配置本该在**主题配置文件**中配置的选项
+- [hexo d 出错](https://www.zhihu.com/question/38219432)
+- 忘了...
+
+不过好在next的[官方文档](http://theme-next.iissnan.com/)很详细和搜索引擎的强大。
+
+#### CSDN-->MD
+
+在CSDN上也写了一些文章，都是学习前端遇到的问题。倒腾了很久，想找个工具能够把文章批量转成hexo所用的md格式，从而转进hexo，无奈都是python和java写的，对运行环境要求严格，还有各种扩展包。最终在Github上找到了[h2m](https://github.com/island205/h2m)，js写的，能够在线将html代码转成md格式，（还是js好呀，一个浏览器搞定）虽然不能批量处理，不过就当是重温以前的笔记了，而且我也添加了很多现在的见解。
+
+#### 图床
+
+以后要是图多的话，图床必不可少，七牛云服务不错，推荐个[Windows下的图片上传工具MPic](http://blog.lzhaofu.cn/2016/08/26/图床神器-Windows下的图片上传工具MPic/),是个提高效率的好工具。（大佬们想用的工具找不到一言不合就自己写个...）
+
+#### FTPSync
+
+GitHub Pages屏蔽了百度的爬虫，要想让自己的blog被百度收录，网上很多方法是再托管一份在coding.net上，我配置了一下，发现从coding.net那边跳转过来时，会被强行加上一个coding.net的中转页面，如果想去掉只能充钱升级为￥199/年的黄金会员或者在首页写上Hosted by Coding Pages......这怎么能忍!
+既然自己有域名和云服务器，干脆直接将文件也上传一份到自己的服务器上好的。于是我在网站后台新建站点blog.simmzl.cn,并为其创建个相应目录的FTP账号。[HEXO官方文档](https://hexo.io/zh-cn/docs/deployment.html)中部署方式除了GIT，还有FTPSync：
+安装 hexo-deployer-ftpsync。
+
+```shell
+npm install hexo-deployer-ftpsync --save-dev
+```
+
+修改配置。
+
+```shell
+deploy:
+  type: ftpsync
+  host: <host> //主机地址，自己的IP地址或者网址
+  user: <user> //FTP的用户名
+  pass: <password> //FTP的密码
+  remote: [remote] //远程主机的根目录	写  /  就好了
+  port: [port] //FTP端口，21
+  ignore: [ignore] //忽略的文件或目录 
+  connections: [connections] //使用的连接数 默认1
+  verbose: [true|false] //显示调试信息
+```
+
+配置之后，
+
+```Shell
+hexo g
+hexo d
+```
+
+上传成功。
+
+#### 关于电脑迁移
+
+从大学电脑 -> 公司电脑 -> 个人mac pro ，一共迁移了两次。
+
+删除一些不必要的文件：`.deploy_git`文件夹里除`.git`外的所有文件、执行`hexo clean`删除`public`下的发布文件，然后通过u盘拷贝到新电脑，(也可以通过github仓库）`npm install`即可，mac 下需全局安装hexo `sudo npm install -g hexo`
+
+#### 其他
+
+标签插件：[https://hexo.io/zh-cn/docs/tag-plugins.html](https://hexo.io/zh-cn/docs/tag-plugins.html)
+
+使用blockquote可引入图片视频、jsFiddle等
+
+<CaptionImage src="http://static.simmzl.cn/blog/v2/imgs/201978906.JPG" alt="Demo"/>
+
+<CaptionImage src="http://static.simmzl.cn/blog/v2/imgs/201978906.JPG" alt="Demo"/>
