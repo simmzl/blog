@@ -14,8 +14,8 @@ HTML：
 
 ```html
 <div class="div1">
-    <div style="float:left">Left</div>
-    <div style="float:right">Right</div>
+    <div style={{ float: "left" }}>Left</div>
+    <div style={{ float: "right" }}>Right</div>
 </div>
 <div class="div2">
     div2
@@ -24,7 +24,7 @@ HTML：
 
 
 
-- 父级div1定义伪类:after。有点麻烦，代码多，很多网站使用，跟`<div style="clear:both"></div>`很相似;
+- 父级div1定义伪类:after。有点麻烦，代码多，很多网站使用，跟`<div style={{ clear: "both" }}></div>`很相似;
 
 ```css
 .div1:after{
@@ -43,7 +43,7 @@ HTML：
 <div class="div1">
     <div class="left">Left</div>
     <div class="right">Right</div>
-    <div style="clear:both"></div>
+    <div style={{ clear: "both" }}></div>
     <!--或者：<br>-->
 </div>
 ```

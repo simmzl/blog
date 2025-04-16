@@ -514,7 +514,7 @@ Vue 在更新 DOM 时是异步执行的。只要侦听到数据变化，Vue 将�
 
 避免不必要的计算和 DOM 操作。
 
-**下一个的事件循环“tick”中，Vue 刷新队列并执行实际 (已去重的) 工作**，这时候DOM的数据才改变完毕。Vue 在内部对异步队列尝试使用原生的 Promise.then、MutationObserver 和 setImmediate，如果执行环境不支持，则会采用 setTimeout(fn, 0) 代替。
+**下一个的事件循环"tick"中，Vue 刷新队列并执行实际 (已去重的) 工作**，这时候DOM的数据才改变完毕。Vue 在内部对异步队列尝试使用原生的 Promise.then、MutationObserver 和 setImmediate，如果执行环境不支持，则会采用 setTimeout(fn, 0) 代替。
 
 正常都还好，但是如果**你在更新数据后，想基于更新后的 DOM 状态来做点什么**，这个时候你从DOM那边拿到的数据很可能是未改变的值。
 
@@ -864,7 +864,7 @@ origin： 协议+主机+端口号，也可以设置为"*"，表示可以传递�
 1、a.html：(http://www.domain1.com/a.html)
 
 ```html
-<iframe id="iframe" src="http://www.domain2.com/b.html" style="display:none;"></iframe>
+<iframe id="iframe" src="http://www.domain2.com/b.html" style={{ display: "none" }}></iframe>
 <script>       
     var iframe = document.getElementById('iframe');
     iframe.onload = function() {

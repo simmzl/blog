@@ -1,0 +1,2 @@
+1.所有 *.mdx 文件，如果使用了 html标签，其风格应是 jsx的。
+2.如果用到img标签，应该用 CaptionImage 组件。

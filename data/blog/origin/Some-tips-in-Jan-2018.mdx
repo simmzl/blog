@@ -220,8 +220,8 @@ Object.defineProperty(obj, 'demo', {
 
 ```html
 <div>
-  <div style="marginBottom:20px">兄</div>
-  <div style="marginTop:10px">弟</div>
+  <div style={{ marginBottom: "20px" }}>兄</div>
+  <div style={{ marginTop: "10px" }}>弟</div>
 </div>
 ```
 
@@ -231,9 +231,9 @@ Object.defineProperty(obj, 'demo', {
 
 ```html
 <div>
-  <div style="marginBottom:20px">兄</div>
+  <div style={{ marginBottom: "20px" }}>兄</div>
   <span>第三者</span>
-  <div style="marginTop:10px">弟</div>
+  <div style={{ marginTop: "10px" }}>弟</div>
 </div>
 ```
 
@@ -242,9 +242,9 @@ Object.defineProperty(obj, 'demo', {
 父子之间的`margin-top`相邻或`margin-bottom`相邻；
 
 ```html
-<div style="marginBottom:20px">
+<div style={{ marginBottom: "20px" }}>
   <div>111</div>
-    <div style="marginBottom:10px">子</div>
+    <div style={{ marginBottom: "10px" }}>子</div>
 </div>
 <div>NEXT</div>
 ```
@@ -536,7 +536,7 @@ console.log(obj2.getAge()); // 30
 - this是函数内部的一个特殊对象（或this引用）--它引用的是函数据以执行的环境对象。（来源于JavaScript高级程序设计）
 
 - this引用是一种在JavaScript的代码中随时都可以使用的只读变量。 this引用，引用（指向）的是一个对象，**它有着会根据代码上下文语境自动改变其引用对象的特性**。
-- JavaScript是动态语言，**this关键字在执行的时候才能确定是谁**，所以this永远指向调用者，即对“调用对象”的引用。简单点说就是 **调用的方法属于哪个对象，this就指向那个对象。根据函数调用方式的不同，this可以 指向全局对象，当前对象，或其他任意对象。[this四个调用模式](https://blog.simmzl.cn/2017/10/%E5%87%BD%E6%95%B0%E7%9A%84%E4%B8%A4%E4%B8%AA%E9%99%84%E5%8A%A0%E5%8F%82%E6%95%B0%EF%BC%9Athis%E5%92%8Carguments.html)**
+- JavaScript是动态语言，**this关键字在执行的时候才能确定是谁**，所以this永远指向调用者，即对"调用对象"的引用。简单点说就是 **调用的方法属于哪个对象，this就指向那个对象。根据函数调用方式的不同，this可以 指向全局对象，当前对象，或其他任意对象。[this四个调用模式](https://blog.simmzl.cn/2017/10/%E5%87%BD%E6%95%B0%E7%9A%84%E4%B8%A4%E4%B8%AA%E9%99%84%E5%8A%A0%E5%8F%82%E6%95%B0%EF%BC%9Athis%E5%92%8Carguments.html)**
 
 因此，this只有在被调用时才确定指向，`console.log(obj2.getAge())` 的结果是`obj2.age`，即30。
 
