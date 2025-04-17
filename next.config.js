@@ -16,7 +16,17 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 //   frame-src giscus.app
 // `
 
-const ContentSecurityPolicy = ``
+const ContentSecurityPolicy = `
+  upgrade-insecure-requests;
+  default-src *;
+  script-src *;
+  style-src *;
+  img-src * blob: data:;
+  media-src *;
+  connect-src *;
+  font-src *;
+  frame-src *;
+`
 
 const securityHeaders = [
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
